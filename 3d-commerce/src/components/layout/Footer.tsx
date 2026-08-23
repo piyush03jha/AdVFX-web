@@ -168,7 +168,7 @@ export function Footer() {
               sm:grid-cols-2
               lg:grid-cols-[1.25fr_0.85fr_0.85fr_1fr]
               lg:gap-10
-          "
+            "
           >
             {/* =================================================
                 BRAND
@@ -203,9 +203,7 @@ export function Footer() {
                   "
                 >
                   FORMA
-                  <span className="text-primary">
-                    .
-                  </span>
+                  <span className="text-primary">.</span>
                 </span>
               </Link>
 
@@ -221,10 +219,8 @@ export function Footer() {
                   sm:leading-6
                 "
               >
-                Premium 3D models, digital
-                collectibles, and custom
-                creations built with obsessive
-                attention to detail.
+                Premium 3D models, digital collectibles, and custom
+                creations built with obsessive attention to detail.
               </p>
 
               {/* CUSTOM CTA */}
@@ -278,34 +274,16 @@ export function Footer() {
                   sm:mt-8
                 "
               >
-                <SocialLink
-                  href="#"
-                  label="Instagram"
-                >
-                  <IconBrandInstagram
-                    size={15}
-                    stroke={1.5}
-                  />
+                <SocialLink href="#" label="Instagram">
+                  <IconBrandInstagram size={15} stroke={1.5} />
                 </SocialLink>
 
-                <SocialLink
-                  href="#"
-                  label="X"
-                >
-                  <IconBrandX
-                    size={15}
-                    stroke={1.5}
-                  />
+                <SocialLink href="#" label="X">
+                  <IconBrandX size={15} stroke={1.5} />
                 </SocialLink>
 
-                <SocialLink
-                  href="#"
-                  label="YouTube"
-                >
-                  <IconBrandYoutube
-                    size={15}
-                    stroke={1.5}
-                  />
+                <SocialLink href="#" label="YouTube">
+                  <IconBrandYoutube size={15} stroke={1.5} />
                 </SocialLink>
               </div>
             </div>
@@ -316,10 +294,7 @@ export function Footer() {
 
             <FooterColumn title="Collections">
               {collections.map((item) => (
-                <FooterLink
-                  key={item.href}
-                  href={item.href}
-                >
+                <FooterLink key={item.href} href={item.href}>
                   {item.label}
                 </FooterLink>
               ))}
@@ -331,10 +306,7 @@ export function Footer() {
 
             <FooterColumn title="Help">
               {helpLinks.map((item) => (
-                <FooterLink
-                  key={item.href}
-                  href={item.href}
-                >
+                <FooterLink key={item.href} href={item.href}>
                   {item.label}
                 </FooterLink>
               ))}
@@ -345,9 +317,7 @@ export function Footer() {
             ================================================== */}
 
             <div>
-              <FooterHeading>
-                Contact
-              </FooterHeading>
+              <FooterHeading>Contact</FooterHeading>
 
               <div className="space-y-3.5">
                 <ContactItem
@@ -364,9 +334,7 @@ export function Footer() {
                   +91 96000 12345
                 </ContactItem>
 
-                <ContactItem
-                  icon={IconMapPin}
-                >
+                <ContactItem icon={IconMapPin}>
                   Mumbai, Maharashtra
                 </ContactItem>
               </div>
@@ -424,8 +392,8 @@ export function Footer() {
                 sm:text-[9px]
               "
             >
-              © {currentYear} Forma 3D Studios
-              Pvt. Ltd. All rights reserved.
+              © {currentYear} Forma 3D Studios Pvt. Ltd. All rights
+              reserved.
             </p>
 
             <div
@@ -506,9 +474,7 @@ function FooterColumn({
 }) {
   return (
     <div>
-      <FooterHeading>
-        {title}
-      </FooterHeading>
+      <FooterHeading>{title}</FooterHeading>
 
       <nav
         className="
@@ -632,6 +598,7 @@ function ContactItem({
   icon: React.ComponentType<{
     size?: number;
     stroke?: number;
+    className?: string;
   }>;
   href?: string;
   children: React.ReactNode;
@@ -648,9 +615,7 @@ function ContactItem({
         "
       />
 
-      <span className="min-w-0">
-        {children}
-      </span>
+      <span className="min-w-0">{children}</span>
     </>
   );
 
