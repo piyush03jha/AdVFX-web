@@ -128,7 +128,7 @@ export function ProductInfo({
       </div>
 
       <ProductActions
-        product={product}
+        productId={product.id}
       />
 
       {/* Trust indicators */}
