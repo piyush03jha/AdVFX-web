@@ -13,17 +13,25 @@ export type CountryCode =
 export interface CountryConfig {
   code: CountryCode;
   name: string;
-  currency: "INR" | "USD" | "GBP" | "AED" | "CAD" | "AUD" | "SGD" | "EUR" | "JPY";
+  currency:
+    | "INR"
+    | "USD"
+    | "GBP"
+    | "AED"
+    | "CAD"
+    | "AUD"
+    | "SGD"
+    | "EUR"
+    | "JPY";
   symbol: string;
 }
 
 /**
- * Checkout country configuration.
+ * Checkout country and currency metadata.
  *
- * Prices currently remain in the catalog's base currency (INR).
- * The currency metadata is intentionally centralized here so a
- * server-side pricing/exchange-rate service can be connected later
- * without changing the checkout UI.
+ * This file only describes supported markets. Retail prices are resolved by
+ * src/lib/pricing and are intentionally kept separate so each country can
+ * have an independent business-defined price.
  */
 export const COUNTRIES: CountryConfig[] = [
   { code: "IN", name: "India", currency: "INR", symbol: "₹" },
@@ -39,5 +47,8 @@ export const COUNTRIES: CountryConfig[] = [
 ];
 
 export function getCountry(code: CountryCode) {
-  return COUNTRIES.find((country) => country.code === code) ?? COUNTRIES[0];
+  return (
+    COUNTRIES.find((country) => country.code === code) ??
+    COUNTRIES[0]
+  );
 }
