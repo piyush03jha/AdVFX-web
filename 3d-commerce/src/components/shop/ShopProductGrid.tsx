@@ -37,23 +37,17 @@ export function ShopProductGrid() {
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
-
     const result = trendingProducts.filter((product) => {
       const matchesSearch =
         query.length === 0 ||
         product.name.toLowerCase().includes(query) ||
         product.category.toLowerCase().includes(query);
-
       const matchesCategory =
         filters.categories.length === 0 ||
         filters.categories.includes(product.category);
-
       const matchesPrice =
-        product.price >= filters.minPrice &&
-        product.price <= filters.maxPrice;
-
+        product.price >= filters.minPrice && product.price <= filters.maxPrice;
       const matchesRating = product.rating >= filters.minRating;
-
       return matchesSearch && matchesCategory && matchesPrice && matchesRating;
     });
 
@@ -107,17 +101,15 @@ export function ShopProductGrid() {
 
       <section className="relative pb-20 sm:pb-24 lg:pb-28">
         <Container>
-          {/* Category navigation */}
           <div className="-mx-1 mb-7 overflow-hidden sm:mb-8">
             <ShopNavigation
               categories={categories}
               selectedCategories={filters.categories}
               onCategoryChange={handleCategoryChange}
-              onShowAll={() => setFilters(INITIAL_FILTERS)}
+              onShowAll={clearAll}
             />
           </div>
 
-          {/* Catalog controls */}
           <div className="border-t border-border/50 pt-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <ShopSearch value={search} onChange={setSearch} />
@@ -135,8 +127,7 @@ export function ShopProductGrid() {
                 <button
                   type="button"
                   onClick={clearAll}
-                  disabled={!hasActiveFilters}
-                  className="hidden h-11 items-center rounded-lg border border-primary/50 px-5 text-xs font-medium text-primary transition-colors hover:bg-primary/[0.07] disabled:pointer-events-none disabled:opacity-35 sm:flex"
+                  className="hidden h-11 items-center rounded-lg border border-primary/50 px-5 text-xs font-medium text-primary transition-colors hover:bg-primary/[0.07] sm:flex"
                 >
                   Clear Filters
                 </button>
@@ -152,7 +143,6 @@ export function ShopProductGrid() {
               />
             </div>
 
-            {/* Mobile controls */}
             <div className="mt-3 flex items-center justify-between gap-3 lg:hidden">
               <p className="text-xs text-muted">
                 Showing <span className="text-foreground">{filteredProducts.length}</span> models
@@ -181,7 +171,6 @@ export function ShopProductGrid() {
             </div>
           </div>
 
-          {/* Product grid */}
           <div className="mt-8 sm:mt-9">
             {filteredProducts.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
