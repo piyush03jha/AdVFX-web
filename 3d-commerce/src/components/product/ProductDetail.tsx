@@ -8,9 +8,8 @@ import { Section } from "@/components/ui/Section";
 import type { Product } from "@/config/products";
 
 import { ProductBreadcrumb } from "./ProductBreadcrumb";
+import { ProductDetailsTabs } from "./ProductDetailsTabs";
 import { ProductInfo } from "./ProductInfo";
-import { ProductReviews } from "./ProductReviews";
-import { ProductSpecs } from "./ProductSpecs";
 import { ProductViewer } from "./ProductViewer";
 import { RelatedProducts } from "./RelatedProducts";
 
@@ -30,11 +29,7 @@ export function ProductDetail({
       ========================================== */}
 
       <Section
-        className="
-          pt-6
-          sm:pt-8
-          lg:pt-10
-        "
+        className="pt-6 sm:pt-8 lg:pt-10"
         glow
       >
         <Container>
@@ -53,32 +48,15 @@ export function ProductDetail({
               xl:gap-16
             "
           >
-            {/* Viewer */}
-
+            {/* Product media */}
             <motion.div
-              initial={{
-                opacity: 0,
-                y: 18,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{
                 duration: 0.65,
-                ease: [
-                  0.22,
-                  1,
-                  0.36,
-                  1,
-                ],
+                ease: [0.22, 1, 0.36, 1],
               }}
-              className="
-                min-w-0
-                lg:sticky
-                lg:top-24
-                lg:self-start
-              "
+              className="min-w-0 lg:sticky lg:top-24 lg:self-start"
             >
               <ProductViewer
                 model={product.model}
@@ -87,61 +65,33 @@ export function ProductDetail({
             </motion.div>
 
             {/* Product information */}
-
             <motion.div
-              initial={{
-                opacity: 0,
-                y: 18,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{
                 duration: 0.65,
                 delay: 0.08,
-                ease: [
-                  0.22,
-                  1,
-                  0.36,
-                  1,
-                ],
+                ease: [0.22, 1, 0.36, 1],
               }}
-              className="
-                min-w-0
-                lg:py-6
-              "
+              className="min-w-0 lg:py-6"
             >
-              <ProductInfo
-                product={product}
-              />
+              <ProductInfo product={product} />
             </motion.div>
           </div>
         </Container>
       </Section>
 
       {/* =========================================
-          DETAILS
-      ========================================== */}
+          DESCRIPTION / SPECS / REVIEWS
+          Only the selected tab is rendered.
+      ========================================== */
 
-      <Section>
+      <Section className="pt-0">
         <Container>
-          <ProductSpecs
-            product={product}
-          />
+          <ProductDetailsTabs product={product} />
 
-          <div className="mt-12">
-            <ProductReviews
-              product={product}
-            />
-          </div>
-
-          <div className="mt-12">
-            <RelatedProducts
-              products={
-                relatedProducts
-              }
-            />
+          <div className="mt-10 sm:mt-14">
+            <RelatedProducts products={relatedProducts} />
           </div>
         </Container>
       </Section>
