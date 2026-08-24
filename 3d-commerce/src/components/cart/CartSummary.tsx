@@ -9,7 +9,6 @@ import {
   IconTruckDelivery,
 } from "@tabler/icons-react";
 
-import { Button } from "@/components/ui/Button";
 import { useCart } from "@/context/CartContext";
 
 export function CartSummary() {
@@ -78,15 +77,27 @@ export function CartSummary() {
         </span>
       </div>
 
-      <Button
-        asChild
-        className="mt-6 min-h-12 w-full bg-primary text-white shadow-[0_0_30px_var(--glow-primary)] hover:bg-primary-hover"
+      <Link
+        href="/checkout"
+        className="
+          flex
+          min-h-12
+          w-full
+          items-center
+          justify-center
+          gap-2
+          rounded-md
+          bg-primary
+          px-5
+          text-sm
+          font-medium
+          text-white
+          transition-colors
+          hover:bg-primary-hover
+        "
       >
-        <Link href="/checkout">
-          Proceed to checkout
-          <IconArrowRight size={16} />
-        </Link>
-      </Button>
+  ...
+</Link>
 
       <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/[0.07] pt-5">
         <TrustItem icon={<IconLock size={14} />} text="Secure checkout" />

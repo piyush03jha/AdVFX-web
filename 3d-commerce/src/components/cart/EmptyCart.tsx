@@ -25,12 +25,26 @@ export function EmptyCart() {
         Discover premium models and add something worth bringing home.
       </p>
 
-      <Button asChild className="mt-7 bg-primary text-white hover:bg-primary-hover">
-        <Link href="/shop">
-          <IconArrowLeft size={16} />
-          Continue shopping
-        </Link>
-      </Button>
+      <Link
+        href="/shop"
+        className="
+          inline-flex
+          min-h-12
+          items-center
+          justify-center
+          gap-2
+          rounded-md
+          bg-primary
+          px-6
+          text-sm
+          font-medium
+          text-white
+          transition-colors
+          hover:bg-primary-hover
+        "
+      >
+        Continue Shopping
+      </Link>
     </div>
   );
 }
