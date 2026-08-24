@@ -13,9 +13,29 @@ import type { Product } from "@/config/products";
 
 export type CartSize = "small" | "medium" | "large";
 
+/**
+ * Only the product fields the cart actually needs.
+ * This lets product cards from different catalog sections
+ * add items without forcing every catalog item to contain
+ * the full product-detail schema.
+ */
+export interface CartProduct {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  image: string;
+  oldPrice?: number;
+  rating?: number;
+  reviewCount?: number;
+  badge?: string;
+  discount?: string;
+  model?: string;
+}
+
 export interface CartItem {
   key: string;
-  product: Product;
+  product: CartProduct;
   size: CartSize;
   quantity: number;
 }
@@ -24,7 +44,11 @@ interface CartContextValue {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
-  addItem: (product: Product, size?: CartSize, quantity?: number) => void;
+  addItem: (
+    product: Product | CartProduct,
+    size?: CartSize,
+    quantity?: number,
+  ) => void;
   removeItem: (key: string) => void;
   incrementItem: (key: string) => void;
   decrementItem: (key: string) => void;
@@ -41,6 +65,28 @@ function getItemKey(productId: string, size: CartSize) {
   return `${productId}:${size}`;
 }
 
+function isValidCartItem(value: unknown): value is CartItem {
+  if (!value || typeof value !== "object") return false;
+
+  const item = value as Partial<CartItem>;
+  const product = item.product as Partial<CartProduct> | undefined;
+
+  return Boolean(
+    item.key &&
+      item.size &&
+      ["small", "medium", "large"].includes(item.size) &&
+      typeof item.quantity === "number" &&
+      item.quantity > 0 &&
+      product &&
+      typeof product.id === "string" &&
+      typeof product.name === "string" &&
+      typeof product.category === "string" &&
+      typeof product.price === "number" &&
+      Number.isFinite(product.price) &&
+      typeof product.image === "string",
+  );
+}
+
 export function CartProvider({
   children,
 }: {
@@ -54,9 +100,19 @@ export function CartProvider({
       const raw = window.localStorage.getItem(STORAGE_KEY);
 
       if (raw) {
-        const parsed = JSON.parse(raw) as CartItem[];
+        const parsed: unknown = JSON.parse(raw);
+
         if (Array.isArray(parsed)) {
-          setItems(parsed);
+          const validItems = parsed.filter(isValidCartItem);
+          setItems(validItems);
+
+          // Clean stale/corrupt cart data immediately.
+          if (validItems.length !== parsed.length) {
+            window.localStorage.setItem(
+              STORAGE_KEY,
+              JSON.stringify(validItems),
+            );
+          }
         }
       }
     } catch {
@@ -81,12 +137,26 @@ export function CartProvider({
 
   const addItem = useCallback(
     (
-      product: Product,
+      product: Product | CartProduct,
       size: CartSize = "medium",
       quantity = 1,
     ) => {
-      const safeQuantity = Math.max(1, quantity);
+      const safeQuantity = Math.max(1, Math.floor(quantity));
       const key = getItemKey(product.id, size);
+
+      const cartProduct: CartProduct = {
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        image: product.image,
+        oldPrice: product.oldPrice,
+        rating: product.rating,
+        reviewCount: product.reviewCount,
+        badge: product.badge,
+        discount: product.discount,
+        model: product.model,
+      };
 
       setItems((current) => {
         const existing = current.find(
@@ -98,6 +168,8 @@ export function CartProvider({
             item.key === key
               ? {
                   ...item,
+                  // Refresh product information in case catalog data changed.
+                  product: cartProduct,
                   quantity: item.quantity + safeQuantity,
                 }
               : item,
@@ -108,7 +180,7 @@ export function CartProvider({
           ...current,
           {
             key,
-            product,
+            product: cartProduct,
             size,
             quantity: safeQuantity,
           },
