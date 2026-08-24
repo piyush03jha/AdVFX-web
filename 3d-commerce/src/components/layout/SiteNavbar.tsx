@@ -61,7 +61,7 @@ export function Navbar() {
         <NavItems items={navItems} />
 
         {/* Right Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-.5">
           {/* Search */}
           <Link
             href="/search"
