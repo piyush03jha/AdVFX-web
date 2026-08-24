@@ -8,6 +8,7 @@ import {
 } from "@react-three/fiber";
 
 import {
+  Center,
   Environment,
   Html,
   OrbitControls,
@@ -35,10 +36,12 @@ function ProductModel({
   const { scene } = useGLTF(model);
 
   return (
-    <primitive
-      object={scene}
-      scale={1}
-    />
+    <Center>
+      <primitive
+        object={scene}
+        scale={1}
+      />
+    </Center>
   );
 }
 
@@ -81,7 +84,7 @@ function CameraReset({
   const { camera } = useThree();
 
   if (resetKey >= 0) {
-    camera.position.set(0, 0.5, 4);
+    camera.position.set(0, 0, 4);
     camera.lookAt(0, 0, 0);
   }
 
@@ -160,7 +163,7 @@ export function ProductViewer({
 
       <Canvas
         camera={{
-          position: [0, 0.5, 4],
+          position: [0, 0, 4],
           fov: 42,
         }}
         dpr={[1, 1.5]}
@@ -184,16 +187,15 @@ export function ProductViewer({
         <Suspense fallback={<ViewerLoader />}>
           <ProductModel model={model} />
 
-          <Environment
-            preset="studio"
-          />
+          <Environment preset="studio" />
         </Suspense>
 
         <OrbitControls
           enablePan={false}
           enableZoom
-          minDistance={2}
+          minDistance={1.6}
           maxDistance={7}
+          target={[0, 0, 0]}
           autoRotate={autoRotate}
           autoRotateSpeed={1.5}
           enableDamping
