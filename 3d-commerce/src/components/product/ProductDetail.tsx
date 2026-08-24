@@ -11,8 +11,8 @@ import { ProductBreadcrumb } from "./ProductBreadcrumb";
 import { ProductInfo } from "./ProductInfo";
 import { ProductReviews } from "./ProductReviews";
 import { ProductSpecs } from "./ProductSpecs";
-import { ProductViewer } from "./ProductViewer";
 import { RelatedProducts } from "./RelatedProducts";
+import { ProductGallery } from "./ProductGallery";
 
 interface ProductDetailProps {
   product: Product;
@@ -53,7 +53,7 @@ export function ProductDetail({
               xl:gap-16
             "
           >
-            {/* Viewer */}
+            {/* Gallery */}
 
             <motion.div
               initial={{
@@ -80,9 +80,8 @@ export function ProductDetail({
                 lg:self-start
               "
             >
-              <ProductViewer
-                model={product.model}
-                name={product.name}
+              <ProductGallery
+                product={product}
               />
             </motion.div>
 

@@ -1,139 +1,460 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Canvas } from "@react-three/fiber";
-import {
-  Environment,
-  OrbitControls,
-  useGLTF,
-} from "@react-three/drei";
+import Image from "next/image";
+import { useState } from "react";
 import {
   IconChevronLeft,
   IconChevronRight,
-  IconMaximize,
-  IconRotate,
+  IconCube,
+  IconPhoto,
 } from "@tabler/icons-react";
 
 import type { Product } from "@/config/products";
-import { IconButton } from "@/components/ui/IconButton";
+
+import { ProductViewer } from "./ProductViewer";
 
 interface ProductGalleryProps {
   product: Product;
 }
 
-function ProductModel({ model }: { model: string }) {
-  const { scene } = useGLTF(model);
-  return <primitive object={scene} scale={1} />;
-}
+/**
+ * Product media gallery
+ *
+ * Loading strategy:
+ *
+ * 1. Product image loads first.
+ * 2. GLB viewer is mounted only when the 3D slide is selected.
+ * 3. Additional product images can be added later through
+ *    product.images without changing the gallery architecture.
+ */
+export function ProductGallery({
+  product,
+}: ProductGalleryProps) {
+  const images =
+    "images" in product &&
+    Array.isArray(product.images)
+      ? product.images
+      : [];
 
-function ModelView({ model, name }: { model: string; name: string }) {
-  return (
-    <Canvas
-      camera={{ position: [0, 0.45, 4], fov: 42 }}
-      dpr={[1, 1.35]}
-      gl={{ antialias: true, powerPreference: "high-performance" }}
-    >
-      <ambientLight intensity={1.1} />
-      <directionalLight position={[4, 5, 4]} intensity={2} />
-      <directionalLight position={[-4, 2, -2]} intensity={1} />
-      <ProductModel model={model} />
-      <Environment preset="studio" />
-      <OrbitControls enablePan={false} enableZoom minDistance={2} maxDistance={7} enableDamping dampingFactor={0.06} />
-    </Canvas>
-  );
-}
-
-export function ProductGallery({ product }: ProductGalleryProps) {
   const media = [
-    { type: "image" as const, src: product.image, label: "Preview" },
-    { type: "model" as const, src: product.model, label: "3D View" },
-    { type: "image" as const, src: product.image, label: "Detail 01" },
-    { type: "image" as const, src: product.image, label: "Detail 02" },
+    {
+      type: "image" as const,
+      src: product.image,
+      label: "Preview",
+    },
+
+    {
+      type: "3d" as const,
+      src: product.model,
+      label: "3D View",
+    },
+
+    ...images.slice(0, 3).map((src) => ({
+      type: "image" as const,
+      src,
+      label: "Gallery",
+    })),
   ];
 
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [modelRequested, setModelRequested] = useState(false);
+  const [activeIndex, setActiveIndex] =
+    useState(0);
 
-  const active = media[activeIndex];
-
-  useEffect(() => {
-    if (active.type === "model") {
-      setModelRequested(true);
-    }
-  }, [active.type]);
+  const activeMedia =
+    media[activeIndex];
 
   const previous = () => {
-    setActiveIndex((current) => (current - 1 + media.length) % media.length);
+    setActiveIndex((current) =>
+      current === 0
+        ? media.length - 1
+        : current - 1,
+    );
   };
 
   const next = () => {
-    setActiveIndex((current) => (current + 1) % media.length);
-  };
-
-  const fullscreen = () => {
-    const element = document.getElementById("product-gallery-stage");
-    if (!element) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-      return;
-    }
-    element.requestFullscreen?.();
+    setActiveIndex((current) =>
+      current === media.length - 1
+        ? 0
+        : current + 1,
+    );
   };
 
   return (
-    <div className="space-y-3">
-      <div id="product-gallery-stage" className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-border bg-[#080808]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.12),transparent_55%)]" />
+    <div className="w-full">
+      {/* ==================================================
+          MAIN MEDIA
+      ================================================== */}
 
-        {active.type === "image" ? (
-          <img src={active.src} alt={`${product.name} ${active.label}`} className="relative z-10 h-full w-full object-contain p-6 sm:p-10 lg:p-12" />
-        ) : modelRequested ? (
-          <div className="relative z-10 h-full w-full">
-            <ModelView model={product.model} name={product.name} />
-            <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[9px] uppercase tracking-[0.18em] text-white/60 backdrop-blur-md">
-              Interactive 3D
-            </div>
+      <div
+        className="
+          relative
+          aspect-square
+          overflow-hidden
+          rounded-2xl
+          border
+          border-border
+          bg-[#0b0b0b]
+          sm:rounded-3xl
+        "
+      >
+        {/* IMAGE */}
+
+        {activeMedia.type === "image" && (
+          <div className="relative h-full w-full">
+            <Image
+              src={activeMedia.src}
+              alt={product.name}
+              fill
+              priority={activeIndex === 0}
+              sizes="
+                (max-width: 640px) 100vw,
+                (max-width: 1024px) 60vw,
+                55vw
+              "
+              className="
+                object-cover
+                transition-transform
+                duration-700
+              "
+            />
+
+            {/* Cinematic overlay */}
+
+            <div
+              className="
+                pointer-events-none
+                absolute
+                inset-0
+                bg-gradient-to-t
+                from-black/30
+                via-transparent
+                to-transparent
+              "
+            />
           </div>
-        ) : null}
+        )}
 
-        <div className="absolute right-4 top-4 z-20 flex gap-2">
-          <IconButton label="Previous" size="sm" variant="default" onClick={previous} className="border-white/10 bg-black/40 text-white/80 backdrop-blur-md hover:bg-black/60 hover:text-white">
-            <IconChevronLeft size={16} />
-          </IconButton>
-          <IconButton label="Next" size="sm" variant="default" onClick={next} className="border-white/10 bg-black/40 text-white/80 backdrop-blur-md hover:bg-black/60 hover:text-white">
-            <IconChevronRight size={16} />
-          </IconButton>
-          <IconButton label="Fullscreen" size="sm" variant="default" onClick={fullscreen} className="border-white/10 bg-black/40 text-white/80 backdrop-blur-md hover:bg-black/60 hover:text-white">
-            <IconMaximize size={15} />
-          </IconButton>
+        {/* ==================================================
+            3D VIEWER
+
+            IMPORTANT:
+            ProductViewer is only mounted when this slide
+            becomes active. This prevents the GLB/WebGL
+            scene from loading during the initial image load.
+        ================================================== */}
+
+        {activeMedia.type === "3d" && (
+          <div className="h-full w-full">
+            <ProductViewer
+              model={product.model}
+              name={product.name}
+            />
+          </div>
+        )}
+
+        {/* ==================================================
+            MEDIA LABEL
+        ================================================== */}
+
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-4
+            top-4
+            z-20
+            flex
+            items-center
+            gap-2
+            rounded-full
+            border
+            border-white/10
+            bg-black/45
+            px-3
+            py-1.5
+            backdrop-blur-md
+          "
+        >
+          {activeMedia.type === "3d" ? (
+            <IconCube
+              size={14}
+              stroke={1.5}
+              className="text-primary"
+            />
+          ) : (
+            <IconPhoto
+              size={14}
+              stroke={1.5}
+              className="text-primary"
+            />
+          )}
+
+          <span
+            className="
+              text-[9px]
+              font-medium
+              uppercase
+              tracking-[0.14em]
+              text-white/80
+            "
+          >
+            {activeMedia.label}
+          </span>
         </div>
 
-        {active.type === "model" && (
-          <div className="absolute bottom-4 left-4 z-20 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[9px] uppercase tracking-[0.15em] text-white/50 backdrop-blur-md">
-            <IconRotate size={12} className="mr-1 inline-block" />
-            Drag to rotate · scroll to zoom
-          </div>
+        {/* ==================================================
+            PREVIOUS / NEXT
+        ================================================== */}
+
+        {media.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={previous}
+              aria-label="Previous product media"
+              className="
+                absolute
+                left-3
+                top-1/2
+                z-20
+                flex
+                h-9
+                w-9
+                -translate-y-1/2
+                items-center
+                justify-center
+                rounded-full
+                border
+                border-white/10
+                bg-black/45
+                text-white
+                backdrop-blur-md
+                transition-all
+                duration-300
+                hover:bg-black/70
+              "
+            >
+              <IconChevronLeft
+                size={18}
+                stroke={1.6}
+              />
+            </button>
+
+            <button
+              type="button"
+              onClick={next}
+              aria-label="Next product media"
+              className="
+                absolute
+                right-3
+                top-1/2
+                z-20
+                flex
+                h-9
+                w-9
+                -translate-y-1/2
+                items-center
+                justify-center
+                rounded-full
+                border
+                border-white/10
+                bg-black/45
+                text-white
+                backdrop-blur-md
+                transition-all
+                duration-300
+                hover:bg-black/70
+              "
+            >
+              <IconChevronRight
+                size={18}
+                stroke={1.6}
+              />
+            </button>
+          </>
         )}
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
-        {media.map((item, index) => (
-          <button
-            key={`${item.label}-${index}`}
-            type="button"
-            onClick={() => setActiveIndex(index)}
-            className={`relative aspect-[4/3] overflow-hidden rounded-xl border transition-all ${activeIndex === index ? "border-primary ring-1 ring-primary/40" : "border-border hover:border-primary/30"}`}
-          >
-            {item.type === "image" ? (
-              <img src={item.src} alt="" className="h-full w-full object-cover" loading={index === 0 ? "eager" : "lazy"} />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-[#0c0c0c] text-[9px] uppercase tracking-[0.16em] text-muted">3D</div>
-            )}
-            <span className="absolute inset-x-0 bottom-0 bg-black/45 px-2 py-1 text-left text-[8px] uppercase tracking-[0.12em] text-white/70 backdrop-blur-sm">
-              {item.label}
-            </span>
-          </button>
-        ))}
+      {/* ==================================================
+          THUMBNAILS
+      ================================================== */}
+
+      <div
+        className="
+          mt-3
+          grid
+          grid-cols-4
+          gap-2
+          sm:gap-3
+        "
+      >
+        {media.map(
+          (item, index) => {
+            const active =
+              index === activeIndex;
+
+            return (
+              <button
+                key={`${item.type}-${index}`}
+                type="button"
+                onClick={() =>
+                  setActiveIndex(index)
+                }
+                aria-label={`View ${item.label}`}
+                aria-current={
+                  active
+                    ? "true"
+                    : undefined
+                }
+                className={`
+                  group
+                  relative
+                  aspect-square
+                  overflow-hidden
+                  rounded-xl
+                  border
+                  bg-[#0b0b0b]
+                  transition-all
+                  duration-300
+                  ${
+                    active
+                      ? "border-primary ring-1 ring-primary/40"
+                      : "border-border hover:border-primary/40"
+                  }
+                `}
+              >
+                {/* IMAGE THUMBNAIL */}
+
+                {item.type ===
+                  "image" && (
+                  <Image
+                    src={item.src}
+                    alt=""
+                    fill
+                    sizes="120px"
+                    className="
+                      object-cover
+                      transition-transform
+                      duration-500
+                      group-hover:scale-105
+                    "
+                  />
+                )}
+
+                {/* 3D THUMBNAIL */}
+
+                {item.type === "3d" && (
+                  <>
+                    <div
+                      className="
+                        absolute
+                        inset-0
+                        flex
+                        items-center
+                        justify-center
+                        bg-gradient-to-br
+                        from-primary/10
+                        via-surface
+                        to-black
+                      "
+                    >
+                      <IconCube
+                        size={28}
+                        stroke={1.2}
+                        className="
+                          text-primary
+                          transition-transform
+                          duration-300
+                          group-hover:scale-110
+                        "
+                      />
+                    </div>
+
+                    <div
+                      className="
+                        absolute
+                        inset-x-0
+                        bottom-0
+                        bg-gradient-to-t
+                        from-black/70
+                        to-transparent
+                        px-2
+                        pb-2
+                        pt-5
+                      "
+                    >
+                      <span
+                        className="
+                          text-[8px]
+                          font-medium
+                          uppercase
+                          tracking-[0.12em]
+                          text-white/80
+                        "
+                      >
+                        Interactive 3D
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                {/* Active indicator */}
+
+                {active && (
+                  <span
+                    className="
+                      absolute
+                      bottom-1.5
+                      left-1/2
+                      h-0.5
+                      w-6
+                      -translate-x-1/2
+                      rounded-full
+                      bg-primary
+                    "
+                  />
+                )}
+              </button>
+            );
+          },
+        )}
+      </div>
+
+      {/* ==================================================
+          MEDIA DESCRIPTION
+      ================================================== */}
+
+      <div
+        className="
+          mt-3
+          flex
+          items-center
+          justify-between
+          px-1
+        "
+      >
+        <p
+          className="
+            text-[9px]
+            uppercase
+            tracking-[0.14em]
+            text-muted
+          "
+        >
+          {activeMedia.type === "3d"
+            ? "Drag to rotate • Scroll to zoom"
+            : "Product preview"}
+        </p>
+
+        <p
+          className="
+            text-[9px]
+            tabular-nums
+            text-muted
+          "
+        >
+          {activeIndex + 1} /{" "}
+          {media.length}
+        </p>
       </div>
     </div>
   );
