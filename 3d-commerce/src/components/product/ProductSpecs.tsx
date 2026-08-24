@@ -1,10 +1,3 @@
-import {
-  IconBox,
-  IconCube,
-  IconFile3d,
-  IconTexture,
-} from "@tabler/icons-react";
-
 import type { Product } from "@/config/products";
 
 interface ProductSpecsProps {
@@ -16,26 +9,28 @@ export function ProductSpecs({
 }: ProductSpecsProps) {
   const specs = [
     {
-      icon: <IconFile3d size={18} />,
-      label: "Format",
-      value: product.format,
+      label: "Material",
+      value: "Premium Resin",
     },
     {
-      icon: <IconBox size={18} />,
-      label: "File Size",
-      value: product.fileSize,
+      label: "Scale",
+      value: "1:6",
     },
     {
-      icon: <IconCube size={18} />,
-      label: "Polygon Count",
-      value: product.polygonCount,
+      label: "Height",
+      value: "30 cm",
     },
     {
-      icon: <IconTexture size={18} />,
-      label: "Texture Resolution",
-      value:
-        product.textureResolution ??
-        "Included",
+      label: "Base",
+      value: "Weighted resin with felt bottom",
+    },
+    {
+      label: "Packaging",
+      value: "Cherry wood display box",
+    },
+    {
+      label: "Weight",
+      value: "~0.8 kg (varies by size)",
     },
   ];
 
@@ -64,38 +59,38 @@ export function ProductSpecs({
             sm:text-3xl
           "
         >
-          Model specifications
+          Product specifications
         </h2>
       </div>
 
       <div
         className="
           mt-7
-          grid
-          grid-cols-2
-          gap-3
-          sm:grid-cols-4
+          overflow-hidden
+          border-y
+          border-white/[0.07]
         "
       >
         {specs.map((spec) => (
           <div
             key={spec.label}
             className="
-              rounded-2xl
-              border
+              grid
+              grid-cols-[100px_minmax(0,1fr)]
+              items-center
+              gap-5
+              border-b
               border-white/[0.07]
-              bg-black/15
-              p-5
+              py-4
+              last:border-b-0
+              sm:grid-cols-[140px_minmax(0,1fr)]
+              sm:py-5
             "
           >
-            <div className="text-primary">
-              {spec.icon}
-            </div>
-
             <p
               className="
-                mt-5
                 text-[9px]
+                font-medium
                 uppercase
                 tracking-[0.16em]
                 text-muted
@@ -106,10 +101,11 @@ export function ProductSpecs({
 
             <p
               className="
-                mt-1.5
+                text-right
                 text-sm
                 font-medium
                 text-foreground
+                sm:text-[15px]
               "
             >
               {spec.value}

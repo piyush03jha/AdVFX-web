@@ -30,7 +30,14 @@ export function ProductReviews({
   product,
 }: ProductReviewsProps) {
   return (
-    <div>
+    <div
+      className="
+        w-full
+        min-w-0
+        max-w-full
+        overflow-hidden
+      "
+    >
       {/* ==================================================
           REVIEW SUMMARY
       ================================================== */}
@@ -38,14 +45,15 @@ export function ProductReviews({
       <div
         className="
           flex
+          min-w-0
           flex-col
-          gap-5
+          gap-4
           sm:flex-row
           sm:items-end
           sm:justify-between
         "
       >
-        <div>
+        <div className="min-w-0">
           <p
             className="
               text-[9px]
@@ -75,13 +83,20 @@ export function ProductReviews({
         <div
           className="
             flex
+            shrink-0
             items-center
-            gap-3
+            gap-2
           "
         >
-          <div className="flex items-center gap-1">
+          <div
+            className="
+              flex
+              items-center
+              gap-1
+            "
+          >
             <IconStar
-              size={17}
+              size={16}
               fill="currentColor"
               className="text-primary"
             />
@@ -114,9 +129,13 @@ export function ProductReviews({
 
       <div
         className="
-          mt-7
+          mt-6
           grid
+          min-w-0
+          max-w-full
+          grid-cols-1
           gap-3
+          sm:grid-cols-2
           md:grid-cols-3
         "
       >
@@ -124,11 +143,15 @@ export function ProductReviews({
           <article
             key={review.name}
             className="
+              min-w-0
+              max-w-full
+              overflow-hidden
               rounded-2xl
               border
               border-white/[0.07]
               bg-black/15
-              p-5
+              p-4
+              sm:p-5
             "
           >
             <div className="flex gap-0.5">
@@ -160,6 +183,8 @@ export function ProductReviews({
             <p
               className="
                 mt-4
+                min-w-0
+                break-words
                 text-sm
                 leading-6
                 text-muted

@@ -9,6 +9,12 @@ import { ProductGallery } from "./ProductGallery";
 import { ProductInfo } from "./ProductInfo";
 import { RelatedProducts } from "./RelatedProducts";
 
+import {
+  IconClock,
+  IconShieldCheck,
+  IconTruckDelivery,
+} from "@tabler/icons-react";
+
 interface ProductDetailProps {
   product: Product;
   relatedProducts: Product[];
@@ -19,7 +25,7 @@ export function ProductDetail({
   relatedProducts,
 }: ProductDetailProps) {
   return (
-    <main className="overflow-hidden">
+    <main className="w-full overflow-hidden">
       {/* =====================================================
           PRODUCT HERO
       ====================================================== */}
@@ -27,13 +33,13 @@ export function ProductDetail({
       <Section
         className="
           relative
-          pt-24
-          sm:pt-28
-          lg:pt-32
+          pt-10
+          sm:pt-8
+          lg:pt-14
         "
         glow
       >
-        {/* Ambient background */}
+        {/* Ambient glow */}
 
         <div
           aria-hidden="true"
@@ -41,33 +47,42 @@ export function ProductDetail({
             pointer-events-none
             absolute
             left-1/2
-            top-20
-            h-[520px]
-            w-[520px]
+            top-0
+            h-[420px]
+            w-[420px]
             -translate-x-1/2
             rounded-full
             bg-primary/8
-            blur-[140px]
+            blur-[120px]
+            sm:h-[520px]
+            sm:w-[520px]
+            sm:blur-[140px]
           "
         />
 
         <Container>
+          {/* =================================================
+              BREADCRUMB
+          ================================================= */}
+
           <ProductBreadcrumb
             category={product.category}
             productName={product.name}
           />
 
           {/* =================================================
-              MAIN PRODUCT AREA
+              PRODUCT GRID
           ================================================= */}
 
           <div
             className="
               relative
-              mt-7
+              mt-4
               grid
               grid-cols-1
-              gap-8
+              gap-7
+              sm:mt-5
+              sm:gap-8
               lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]
               lg:gap-10
               xl:gap-14
@@ -77,8 +92,15 @@ export function ProductDetail({
                 LEFT — PRODUCT GALLERY
             ================================================= */}
 
-            <div className="min-w-0">
-              <ProductGallery product={product} />
+            <div
+              className="
+                min-w-0
+                w-full
+              "
+            >
+              <ProductGallery
+                product={product}
+              />
             </div>
 
             {/* =================================================
@@ -88,48 +110,58 @@ export function ProductDetail({
             <div
               className="
                 min-w-0
+                w-full
                 lg:sticky
-                lg:top-28
+                lg:top-24
                 lg:self-start
               "
             >
-              <ProductInfo product={product} />
+              <ProductInfo
+                product={product}
+              />
             </div>
           </div>
 
           {/* =================================================
-              BENEFIT STRIP
+              SHIPPING / TRUST INFORMATION
           ================================================= */}
 
           <div
             className="
-              mt-8
+              mt-5
               grid
-              grid-cols-1
+              grid-cols-3
               overflow-hidden
-              rounded-2xl
-              border
+              border-y
               border-white/[0.07]
-              bg-white/[0.025]
-              sm:grid-cols-3
+              sm:mt-7
             "
           >
             <Benefit
-              number="01"
-              title="Instant delivery"
-              description="Download your files immediately after purchase."
+              icon={
+                <IconTruckDelivery
+                  size={14}
+                />
+              }
+              title="Free shipping over ₹4,999"
             />
 
             <Benefit
-              number="02"
-              title="Production ready"
-              description="Optimized GLB asset ready for modern 3D workflows."
+              icon={
+                <IconShieldCheck
+                  size={14}
+                />
+              }
+              title="Authenticity guaranteed"
             />
 
             <Benefit
-              number="03"
-              title="Secure licensing"
-              description="Clear usage rights for your selected license."
+              icon={
+                <IconClock
+                  size={14}
+                />
+              }
+              title="Ships in 2–3 business days"
             />
           </div>
         </Container>
@@ -141,13 +173,15 @@ export function ProductDetail({
 
       <Section
         className="
-          pt-12
-          sm:pt-16
-          lg:pt-20
+          pt-6
+          sm:pt-8
+          lg:pt-10
         "
       >
         <Container>
-          <ProductDetailsTabs product={product} />
+          <ProductDetailsTabs
+            product={product}
+          />
 
           {/* =================================================
               RELATED PRODUCTS
@@ -156,8 +190,9 @@ export function ProductDetail({
           {relatedProducts.length > 0 && (
             <div
               className="
-                mt-16
-                sm:mt-20
+                mt-10
+                sm:mt-14
+                lg:mt-16
               "
             >
               <RelatedProducts
@@ -171,67 +206,71 @@ export function ProductDetail({
   );
 }
 
+/* ============================================================
+   SHIPPING / TRUST BENEFIT
+============================================================ */
+
 function Benefit({
-  number,
+  icon,
   title,
-  description,
 }: {
-  number: string;
+  icon: React.ReactNode;
   title: string;
-  description: string;
 }) {
   return (
     <div
       className="
         flex
-        gap-4
-        border-b
+        min-w-0
+        items-center
+        justify-center
+        gap-1
+        border-r
         border-white/[0.07]
-        p-5
-        last:border-b-0
-        sm:border-b-0
-        sm:border-r
-        sm:last:border-r-0
-        lg:p-6
+        px-1
+        py-3
+        last:border-r-0
+        sm:gap-2
+        sm:px-3
+        sm:py-4
+        lg:px-5
       "
     >
+      {/* Icon */}
+
       <span
         className="
-          pt-0.5
-          text-[9px]
-          font-medium
-          tracking-[0.18em]
+          flex
+          shrink-0
+          items-center
+          justify-center
           text-primary
         "
       >
-        {number}
+        {icon}
       </span>
 
-      <div className="min-w-0">
-        <h3
-          className="
-            text-xs
-            font-medium
-            uppercase
-            tracking-[0.12em]
-            text-foreground
-          "
-        >
-          {title}
-        </h3>
+      {/* Text */}
 
-        <p
-          className="
-            mt-1.5
-            max-w-sm
-            text-xs
-            leading-5
-            text-muted
-          "
-        >
-          {description}
-        </p>
-      </div>
+      <span
+        className="
+          min-w-0
+          truncate
+          whitespace-nowrap
+          text-[7px]
+          font-medium
+          uppercase
+          tracking-[0.025em]
+          text-muted
+          sm:text-[9px]
+          sm:tracking-[0.05em]
+          lg:text-[10px]
+          lg:tracking-[0.07em]
+        "
+        title={title}
+      >
+        {title}
+      </span>
     </div>
   );
 }

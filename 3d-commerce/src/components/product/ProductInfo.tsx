@@ -1,12 +1,3 @@
-import {
-  IconBox,
-  IconCheck,
-  IconCube,
-  IconDownload,
-  IconFile3d,
-  IconShieldCheck,
-} from "@tabler/icons-react";
-
 import { Badge } from "@/components/ui/Badge";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
@@ -177,7 +168,7 @@ export function ProductInfo({
       </div>
 
       {/* ==================================================
-          SHORT DESCRIPTION
+          DESCRIPTION
       ================================================== */}
 
       <p
@@ -193,184 +184,10 @@ export function ProductInfo({
       </p>
 
       {/* ==================================================
-          ASSET SNAPSHOT
-      ================================================== */}
-
-      <div
-        className="
-          mt-6
-          grid
-          grid-cols-2
-          gap-2
-          sm:grid-cols-4
-        "
-      >
-        <AssetStat
-          icon={<IconFile3d size={15} />}
-          label="Format"
-          value={product.format}
-        />
-
-        <AssetStat
-          icon={<IconBox size={15} />}
-          label="Size"
-          value={product.fileSize}
-        />
-
-        <AssetStat
-          icon={<IconCube size={15} />}
-          label="Polygons"
-          value={product.polygonCount}
-        />
-
-        <AssetStat
-          icon={<IconCheck size={15} />}
-          label="Textures"
-          value={
-            product.textureResolution ??
-            "Included"
-          }
-        />
-      </div>
-
-      {/* ==================================================
           PURCHASE ACTIONS
       ================================================== */}
 
       <ProductActions product={product} />
-
-      {/* ==================================================
-          TRUST
-      ================================================== */}
-
-      <div
-        className="
-          mt-7
-          grid
-          grid-cols-3
-          border-t
-          border-white/[0.07]
-          pt-6
-        "
-      >
-        <TrustItem
-          icon={<IconDownload size={15} />}
-          title="Instant"
-          value="Download"
-        />
-
-        <TrustItem
-          icon={<IconFile3d size={15} />}
-          title="Ready"
-          value="GLB"
-        />
-
-        <TrustItem
-          icon={<IconShieldCheck size={15} />}
-          title="Secure"
-          value="License"
-        />
-      </div>
-    </div>
-  );
-}
-
-function AssetStat({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div
-      className="
-        rounded-xl
-        border
-        border-white/[0.07]
-        bg-black/15
-        p-3
-      "
-    >
-      <div className="text-primary">
-        {icon}
-      </div>
-
-      <p
-        className="
-          mt-2
-          text-[8px]
-          uppercase
-          tracking-[0.15em]
-          text-muted
-        "
-      >
-        {label}
-      </p>
-
-      <p
-        className="
-          mt-1
-          truncate
-          text-xs
-          font-medium
-          text-foreground
-        "
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function TrustItem({
-  icon,
-  title,
-  value,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  value: string;
-}) {
-  return (
-    <div
-      className="
-        flex
-        flex-col
-        items-center
-        gap-1.5
-        border-r
-        border-white/[0.07]
-        text-center
-        last:border-r-0
-      "
-    >
-      <span className="text-primary">
-        {icon}
-      </span>
-
-      <span
-        className="
-          text-[8px]
-          uppercase
-          tracking-[0.12em]
-          text-muted
-        "
-      >
-        {title}
-      </span>
-
-      <span
-        className="
-          text-[10px]
-          font-medium
-          text-foreground
-        "
-      >
-        {value}
-      </span>
     </div>
   );
 }

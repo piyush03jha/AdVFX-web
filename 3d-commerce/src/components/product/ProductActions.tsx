@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import {
   IconCheck,
-  IconHeart,
   IconMinus,
   IconPlus,
   IconShoppingCart,
@@ -12,7 +11,6 @@ import {
 } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/Button";
-import { IconButton } from "@/components/ui/IconButton";
 
 import type { Product } from "@/config/products";
 
@@ -20,32 +18,29 @@ interface ProductActionsProps {
   product: Product;
 }
 
-const LICENSES = [
+const SIZES = [
   {
-    id: "personal",
-    title: "Personal",
-    description: "Individual projects",
+    id: "small",
+    title: "Small",
   },
   {
-    id: "commercial",
-    title: "Commercial",
-    description: "Client & commercial work",
+    id: "medium",
+    title: "Medium",
   },
   {
-    id: "studio",
-    title: "Studio",
-    description: "Professional teams",
+    id: "large",
+    title: "Large",
   },
 ] as const;
 
-type LicenseId =
-  (typeof LICENSES)[number]["id"];
+type SizeId =
+  (typeof SIZES)[number]["id"];
 
 export function ProductActions({
   product,
 }: ProductActionsProps) {
-  const [license, setLicense] =
-    useState<LicenseId>("personal");
+  const [size, setSize] =
+    useState<SizeId>("medium");
 
   const [quantity, setQuantity] =
     useState(1);
@@ -53,13 +48,10 @@ export function ProductActions({
   const [added, setAdded] =
     useState(false);
 
-  const [liked, setLiked] =
-    useState(false);
-
   const addToCart = () => {
     console.log("Add to cart", {
       productId: product.id,
-      license,
+      size,
       quantity,
     });
 
@@ -73,7 +65,7 @@ export function ProductActions({
   const buyNow = () => {
     console.log("Buy now", {
       productId: product.id,
-      license,
+      size,
       quantity,
     });
   };
@@ -81,68 +73,48 @@ export function ProductActions({
   return (
     <div className="mt-7">
       {/* ==================================================
-          LICENSE
+          SIZE
       ================================================== */}
 
       <div>
-        <div className="mb-3 flex items-center justify-between">
-          <p
-            className="
-              text-[9px]
-              font-medium
-              uppercase
-              tracking-[0.18em]
-              text-primary
-            "
-          >
-            Choose license
-          </p>
-
-          <button
-            type="button"
-            className="
-              text-[9px]
-              text-muted
-              underline-offset-4
-              hover:text-primary
-              hover:underline
-            "
-          >
-            License terms
-          </button>
-        </div>
-
-        <div
+        <p
           className="
-            grid
-            grid-cols-1
-            gap-2
-            sm:grid-cols-3
+            mb-3
+            text-[9px]
+            font-medium
+            uppercase
+            tracking-[0.18em]
+            text-primary
           "
         >
-          {LICENSES.map((item) => {
+          Size
+        </p>
+
+        <div className="grid grid-cols-3 gap-2">
+          {SIZES.map((item) => {
             const selected =
-              license === item.id;
+              size === item.id;
 
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() =>
-                  setLicense(item.id)
+                  setSize(item.id)
                 }
                 className={`
                   relative
-                  rounded-xl
+                  min-h-11
                   border
-                  p-3
-                  text-left
+                  px-3
+                  text-xs
+                  font-medium
                   transition-all
                   duration-200
                   ${
                     selected
-                      ? "border-primary/70 bg-primary/8"
-                      : "border-white/[0.08] bg-white/[0.015] hover:border-primary/30"
+                      ? "border-primary bg-primary/8 text-primary"
+                      : "border-white/[0.08] bg-white/[0.015] text-foreground hover:border-primary/40"
                   }
                 `}
               >
@@ -150,8 +122,8 @@ export function ProductActions({
                   <span
                     className="
                       absolute
-                      right-2.5
-                      top-2.5
+                      right-2
+                      top-2
                       flex
                       h-4
                       w-4
@@ -162,36 +134,11 @@ export function ProductActions({
                       text-white
                     "
                   >
-                    <IconCheck size={10} />
+                    <IconCheck size={9} />
                   </span>
                 )}
 
-                <span
-                  className={`
-                    block
-                    text-xs
-                    font-medium
-                    ${
-                      selected
-                        ? "text-primary"
-                        : "text-foreground"
-                    }
-                  `}
-                >
-                  {item.title}
-                </span>
-
-                <span
-                  className="
-                    mt-1
-                    block
-                    text-[9px]
-                    leading-4
-                    text-muted
-                  "
-                >
-                  {item.description}
-                </span>
+                {item.title}
               </button>
             );
           })}
@@ -199,119 +146,87 @@ export function ProductActions({
       </div>
 
       {/* ==================================================
-          QUANTITY + WISHLIST
+          QUANTITY
       ================================================== */}
 
-      <div className="mt-5 flex items-end justify-between">
-        <div>
-          <p
-            className="
-              mb-2
-              text-[9px]
-              font-medium
-              uppercase
-              tracking-[0.18em]
-              text-primary
-            "
-          >
-            Quantity
-          </p>
+      <div className="mt-5">
+        <p
+          className="
+            mb-2
+            text-[9px]
+            font-medium
+            uppercase
+            tracking-[0.18em]
+            text-primary
+          "
+        >
+          Quantity
+        </p>
 
-          <div
+        <div
+          className="
+            flex
+            h-10
+            w-28
+            items-center
+            justify-between
+            border
+            border-white/[0.08]
+            bg-white/[0.015]
+          "
+        >
+          <button
+            type="button"
+            aria-label="Decrease quantity"
+            onClick={() =>
+              setQuantity((value) =>
+                Math.max(1, value - 1),
+              )
+            }
             className="
               flex
-              h-10
-              w-28
+              h-full
+              w-9
               items-center
-              justify-between
-              rounded-lg
-              border
-              border-white/[0.08]
-              bg-white/[0.015]
+              justify-center
+              text-muted
+              hover:text-foreground
             "
           >
-            <button
-              type="button"
-              aria-label="Decrease quantity"
-              onClick={() =>
-                setQuantity((value) =>
-                  Math.max(1, value - 1),
-                )
-              }
-              className="
-                flex
-                h-full
-                w-9
-                items-center
-                justify-center
-                text-muted
-                hover:text-foreground
-              "
-            >
-              <IconMinus size={13} />
-            </button>
+            <IconMinus size={13} />
+          </button>
 
-            <span
-              className="
-                text-xs
-                font-medium
-                text-foreground
-              "
-            >
-              {quantity}
-            </span>
+          <span
+            className="
+              text-xs
+              font-medium
+              text-foreground
+            "
+          >
+            {quantity}
+          </span>
 
-            <button
-              type="button"
-              aria-label="Increase quantity"
-              onClick={() =>
-                setQuantity(
-                  (value) => value + 1,
-                )
-              }
-              className="
-                flex
-                h-full
-                w-9
-                items-center
-                justify-center
-                text-muted
-                hover:text-foreground
-              "
-            >
-              <IconPlus size={13} />
-            </button>
-          </div>
-        </div>
-
-        <IconButton
-          label={
-            liked
-              ? "Remove from wishlist"
-              : "Add to wishlist"
-          }
-          size="sm"
-          variant="default"
-          onClick={() =>
-            setLiked(
-              (value) => !value,
-            )
-          }
-          className={
-            liked
-              ? "border-primary/50 bg-primary/10 text-primary"
-              : ""
-          }
-        >
-          <IconHeart
-            size={17}
-            fill={
-              liked
-                ? "currentColor"
-                : "none"
+          <button
+            type="button"
+            aria-label="Increase quantity"
+            onClick={() =>
+              setQuantity(
+                (value) => value + 1,
+              )
             }
-          />
-        </IconButton>
+            className="
+              flex
+              h-full
+              w-9
+              items-center
+              justify-center
+              text-muted
+              hover:text-foreground
+            "
+          >
+            <IconPlus size={13} />
+          </button>
+        </div>
       </div>
 
       {/* ==================================================
@@ -378,18 +293,6 @@ export function ProductActions({
           Buy Now
         </button>
       </div>
-
-      <p
-        className="
-          mt-3
-          text-center
-          text-[9px]
-          text-muted
-        "
-      >
-        Instant digital delivery after
-        successful payment.
-      </p>
     </div>
   );
 }

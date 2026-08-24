@@ -130,8 +130,7 @@ export function ProductGallery({
   const next = () => {
     setActiveIndex(
       (current) =>
-        (current + 1) %
-        media.length,
+        (current + 1) % media.length,
     );
   };
 
@@ -152,7 +151,7 @@ export function ProductGallery({
   };
 
   return (
-    <div>
+    <div className="min-w-0 w-full">
       {/* ==================================================
           MAIN STAGE
       ================================================== */}
@@ -162,12 +161,14 @@ export function ProductGallery({
         className="
           relative
           aspect-[4/3]
+          w-full
           overflow-hidden
-          rounded-[28px]
+          rounded-[22px]
           border
           border-white/[0.08]
           bg-[#08080a]
           shadow-[0_30px_100px_rgba(0,0,0,0.28)]
+          sm:rounded-[28px]
         "
       >
         {/* Background glow */}
@@ -182,16 +183,21 @@ export function ProductGallery({
           "
         />
 
-        {/* Top controls */}
+        {/* ==================================================
+            TOP CONTROLS
+        ================================================== */}
 
         <div
           className="
             absolute
-            right-4
-            top-4
+            right-3
+            top-3
             z-30
             flex
-            gap-2
+            gap-1.5
+            sm:right-4
+            sm:top-4
+            sm:gap-2
           "
         >
           <IconButton
@@ -208,7 +214,7 @@ export function ProductGallery({
               hover:text-white
             "
           >
-            <IconChevronLeft size={16} />
+            <IconChevronLeft size={15} />
           </IconButton>
 
           <IconButton
@@ -225,7 +231,7 @@ export function ProductGallery({
               hover:text-white
             "
           >
-            <IconChevronRight size={16} />
+            <IconChevronRight size={15} />
           </IconButton>
 
           <IconButton
@@ -242,44 +248,50 @@ export function ProductGallery({
               hover:text-white
             "
           >
-            <IconMaximize size={15} />
+            <IconMaximize size={14} />
           </IconButton>
         </div>
 
-        {/* Counter */}
+        {/* ==================================================
+            COUNTER
+        ================================================== */}
 
         <div
           className="
             absolute
-            left-4
-            top-4
+            left-3
+            top-3
             z-30
             rounded-full
             border
             border-white/10
             bg-black/40
-            px-3
+            px-2.5
             py-1.5
-            text-[9px]
+            text-[8px]
             uppercase
             tracking-[0.16em]
             text-white/55
             backdrop-blur-xl
+            sm:left-4
+            sm:top-4
+            sm:px-3
           "
         >
           {String(activeIndex + 1).padStart(
             2,
             "0",
           )}{" "}
-          / {String(media.length).padStart(
+          /{" "}
+          {String(media.length).padStart(
             2,
             "0",
           )}
         </div>
 
-        {/* =================================================
+        {/* ==================================================
             IMAGE
-        ================================================= */}
+        ================================================== */}
 
         {active.type === "image" && (
           <div className="absolute inset-0">
@@ -289,19 +301,19 @@ export function ProductGallery({
               fill
               priority={activeIndex === 0}
               sizes="
+                (max-width: 640px) 100vw,
                 (max-width: 1024px) 100vw,
                 60vw
               "
               className="
                 object-contain
-                p-8
-                sm:p-12
+                p-5
+                sm:p-10
                 lg:p-16
               "
               onError={() => {
                 if (
-                  imageSrc !==
-                  fallbackImage
+                  imageSrc !== fallbackImage
                 ) {
                   setImageSrc(
                     fallbackImage,
@@ -312,9 +324,9 @@ export function ProductGallery({
           </div>
         )}
 
-        {/* =================================================
-            3D
-        ================================================= */}
+        {/* ==================================================
+            3D VIEW
+        ================================================== */}
 
         {active.type === "model" && (
           <>
@@ -323,6 +335,8 @@ export function ProductGallery({
               name={product.name}
             />
 
+            {/* Desktop instruction */}
+
             <div
               className="
                 pointer-events-none
@@ -330,7 +344,7 @@ export function ProductGallery({
                 bottom-4
                 left-4
                 z-20
-                flex
+                hidden
                 items-center
                 gap-2
                 rounded-full
@@ -344,6 +358,7 @@ export function ProductGallery({
                 tracking-[0.14em]
                 text-white/55
                 backdrop-blur-xl
+                sm:flex
               "
             >
               <IconRotate size={12} />
@@ -352,29 +367,70 @@ export function ProductGallery({
           </>
         )}
 
-        {/* Bottom label */}
+        {/* ==================================================
+            ACTIVE MEDIA LABEL
+        ================================================== */}
 
         <div
           className="
+            pointer-events-none
             absolute
-            bottom-4
-            right-4
+            bottom-3
+            left-1/2
             z-20
+            max-w-[calc(100%-24px)]
+            -translate-x-1/2
+            truncate
             rounded-full
             border
             border-white/10
             bg-black/45
             px-3
-            py-2
-            text-[9px]
+            py-1.5
+            text-center
+            text-[8px]
             uppercase
             tracking-[0.14em]
             text-white/55
             backdrop-blur-xl
+            sm:bottom-4
+            sm:left-auto
+            sm:right-4
+            sm:max-w-none
+            sm:translate-x-0
+            sm:px-3
+            sm:py-2
           "
         >
           {active.label}
         </div>
+
+        {/* Mobile interaction hint */}
+
+        {active.type === "model" && (
+          <div
+            className="
+              pointer-events-none
+              absolute
+              bottom-12
+              left-1/2
+              z-20
+              -translate-x-1/2
+              whitespace-nowrap
+              rounded-full
+              bg-black/30
+              px-2.5
+              py-1
+              text-[7px]
+              uppercase
+              tracking-[0.12em]
+              text-white/35
+              sm:hidden
+            "
+          >
+            Drag to rotate · Pinch to zoom
+          </div>
+        )}
       </div>
 
       {/* ==================================================
@@ -387,6 +443,7 @@ export function ProductGallery({
           grid
           grid-cols-4
           gap-2
+          sm:gap-3
         "
       >
         {media.map((item, index) => {
@@ -405,6 +462,7 @@ export function ProductGallery({
                 group
                 relative
                 aspect-[4/3]
+                min-w-0
                 overflow-hidden
                 rounded-xl
                 border
@@ -422,7 +480,10 @@ export function ProductGallery({
                   src={item.src}
                   alt=""
                   fill
-                  sizes="(max-width: 768px) 25vw, 15vw"
+                  sizes="
+                    (max-width: 640px) 25vw,
+                    15vw
+                  "
                   className="
                     object-cover
                     opacity-80
@@ -433,8 +494,7 @@ export function ProductGallery({
                   "
                   onError={() => {
                     if (
-                      imageSrc !==
-                      fallbackImage
+                      imageSrc !== fallbackImage
                     ) {
                       setImageSrc(
                         fallbackImage,
@@ -459,12 +519,15 @@ export function ProductGallery({
                       border
                       border-primary/30
                       bg-primary/8
-                      px-3
-                      py-1.5
-                      text-[8px]
+                      px-2
+                      py-1
+                      text-[7px]
                       uppercase
-                      tracking-[0.16em]
+                      tracking-[0.12em]
                       text-primary
+                      sm:px-3
+                      sm:py-1.5
+                      sm:text-[8px]
                     "
                   >
                     3D View
@@ -477,15 +540,19 @@ export function ProductGallery({
                   absolute
                   inset-x-0
                   bottom-0
+                  truncate
                   bg-black/45
-                  px-2
+                  px-1.5
                   py-1.5
                   text-left
-                  text-[8px]
+                  text-[7px]
                   uppercase
-                  tracking-[0.12em]
+                  tracking-[0.08em]
                   text-white/65
                   backdrop-blur-sm
+                  sm:px-2
+                  sm:text-[8px]
+                  sm:tracking-[0.12em]
                 "
               >
                 {item.label}

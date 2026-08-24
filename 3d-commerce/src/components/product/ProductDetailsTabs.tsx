@@ -2,11 +2,6 @@
 
 import { useState } from "react";
 
-import {
-  IconCheck,
-  IconChevronRight,
-} from "@tabler/icons-react";
-
 import type { Product } from "@/config/products";
 
 import { ProductReviews } from "./ProductReviews";
@@ -126,9 +121,8 @@ export function ProductDetailsTabs({
           CONTENT
       ================================================== */}
 
-      <div className="p-5 sm:p-7 lg:p-9">
-        {activeTab ===
-          "description" && (
+      <div className="px-5 py-6 sm:px-7 sm:py-7 lg:px-9 lg:py-8">
+        {activeTab === "description" && (
           <Description product={product} />
         )}
 
@@ -136,8 +130,7 @@ export function ProductDetailsTabs({
           <ProductSpecs product={product} />
         )}
 
-        {activeTab ===
-          "reviews" && (
+        {activeTab === "reviews" && (
           <ProductReviews product={product} />
         )}
       </div>
@@ -152,94 +145,45 @@ function Description({
 }) {
   return (
     <div className="max-w-4xl">
-      <div
+      {/* ==================================================
+          DESCRIPTION
+      ================================================== */}
+
+      <p
         className="
-          grid
-          gap-8
-          lg:grid-cols-[1fr_280px]
+          max-w-3xl
+          text-sm
+          leading-7
+          text-muted
+          sm:text-[15px]
         "
       >
-        <div>
-          <p
-            className="
-              text-sm
-              leading-7
-              text-muted
-              sm:text-[15px]
-            "
-          >
-            {product.description}
-          </p>
+        {product.description}
+      </p>
 
-          <p
-            className="
-              mt-5
-              text-sm
-              leading-7
-              text-muted
-              sm:text-[15px]
-            "
-          >
-            Built for modern real-time 3D
-            workflows, this asset is designed
-            to be easy to preview, download,
-            and integrate into your projects.
-          </p>
-        </div>
+      <p
+        className="
+          mt-4
+          max-w-3xl
+          text-sm
+          leading-7
+          text-muted
+          sm:text-[15px]
+        "
+      >
+        Built for modern real-time 3D
+        workflows, this asset is designed
+        to be easy to preview, download,
+        and integrate into your projects.
+      </p>
 
-        <div
-          className="
-            rounded-2xl
-            border
-            border-white/[0.07]
-            bg-black/15
-            p-5
-          "
-        >
-          <p
-            className="
-              text-[9px]
-              font-medium
-              uppercase
-              tracking-[0.18em]
-              text-primary
-            "
-          >
-            Included
-          </p>
-
-          <div className="mt-4 space-y-3">
-            {[
-              `${product.format} file`,
-              `${product.textureResolution ?? "High-resolution"} textures`,
-              `${product.polygonCount} polygons`,
-              "Instant download",
-            ].map((item) => (
-              <div
-                key={item}
-                className="
-                  flex
-                  items-center
-                  gap-2.5
-                  text-xs
-                  text-muted
-                "
-              >
-                <IconCheck
-                  size={14}
-                  className="shrink-0 text-primary"
-                />
-
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* ==================================================
+          COLLECTION TAGS
+      ================================================== */}
 
       {product.tags &&
         product.tags.length > 0 && (
-          <div className="mt-7">
+          <div className="mt-6">
             <p
               className="
                 text-[9px]

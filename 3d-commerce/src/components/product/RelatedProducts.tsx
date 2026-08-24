@@ -22,14 +22,32 @@ export function RelatedProducts({
     return null;
   }
 
+  const handleProductClick = () => {
+    /*
+     * Make sure the next product page starts
+     * at the top instead of preserving the
+     * current Related Products scroll position.
+     */
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "instant",
+    });
+  };
+
   return (
     <section
       className="
         border-t
         border-border
-        pt-12
+        pt-10
+        sm:pt-12
       "
     >
+      {/* ==================================================
+          HEADER
+      ================================================== */}
+
       <div
         className="
           mb-7
@@ -84,6 +102,10 @@ export function RelatedProducts({
         </Link>
       </div>
 
+      {/* ==================================================
+          PRODUCTS
+      ================================================== */}
+
       <div
         className="
           grid
@@ -97,6 +119,8 @@ export function RelatedProducts({
           <Link
             key={product.id}
             href={`/product/${product.id}`}
+            scroll={true}
+            onClick={handleProductClick}
             className="group"
           >
             <Card
