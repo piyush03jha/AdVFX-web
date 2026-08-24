@@ -11,156 +11,63 @@ interface ShopHeaderProps {
   onOpenFilters?: () => void;
 }
 
-export function ShopHeader({
-  productCount,
-  onOpenFilters,
-}: ShopHeaderProps) {
+export function ShopHeader({ productCount, onOpenFilters }: ShopHeaderProps) {
   const shouldReduceMotion = useReducedMotion();
 
   return (
     <section className="relative overflow-hidden">
-      {/* Cinematic background */}
-
       <div
         aria-hidden="true"
-        className="
-          pointer-events-none
-          absolute
-          left-[15%]
-          top-0
-          -z-10
-          h-[280px]
-          w-[420px]
-          rounded-full
-          bg-primary/[0.045]
-          blur-[120px]
-          sm:h-[380px]
-          sm:w-[600px]
-        "
+        className="pointer-events-none absolute left-[8%] top-0 -z-10 h-[240px] w-[420px] rounded-full bg-primary/[0.04] blur-[120px]"
       />
 
-      <Container
-        className="
-          pb-8
-          pt-12
-          sm:pb-10
-          sm:pt-16
-          lg:pb-12
-          lg:pt-20
-        "
-      >
+      <Container className="pb-7 pt-8 sm:pb-8 sm:pt-10 lg:pb-9 lg:pt-12">
         <motion.div
-          initial={
-            shouldReduceMotion
-              ? false
-              : {
-                  opacity: 0,
-                  y: 18,
-                }
-          }
-          animate={
-            shouldReduceMotion
-              ? undefined
-              : {
-                  opacity: 1,
-                  y: 0,
-                }
-          }
-          transition={{
-            duration: 0.65,
-            ease: [0.22, 1, 0.36, 1],
-          }}
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
+          animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
-          <p
-            className="
-              text-[10px]
-              font-medium
-              uppercase
-              tracking-[0.24em]
-              text-primary
-            "
-          >
-            The Collection
-          </p>
+          <div className="flex items-end justify-between gap-8">
+            <div className="min-w-0">
+              <div className="flex items-center gap-3">
+                <span className="h-px w-7 bg-primary" />
+                <p className="text-[9px] font-medium uppercase tracking-[0.24em] text-primary">
+                  The Collection
+                </p>
+              </div>
 
-          <div
-            className="
-              mt-3
-              flex
-              flex-col
-              gap-5
-              sm:flex-row
-              sm:items-end
-              sm:justify-between
-            "
-          >
-            <div>
-              <h1
-                className="
-                  text-4xl
-                  font-semibold
-                  tracking-[-0.055em]
-                  text-foreground
-                  sm:text-5xl
-                  lg:text-6xl
-                "
-              >
+              <h1 className="mt-3 font-serif text-4xl font-normal tracking-[-0.055em] text-foreground sm:text-5xl lg:text-6xl">
                 Explore Models
               </h1>
 
-              <p
-                className="
-                  mt-4
-                  max-w-xl
-                  text-sm
-                  leading-6
-                  text-muted
-                  sm:text-base
-                  sm:leading-7
-                "
-              >
-                Discover premium 3D assets,
-                digital collectibles, and
-                presentation-ready models.
+              <p className="mt-3 max-w-xl text-sm leading-6 text-muted sm:text-[15px]">
+                Premium 3D assets, digital collectibles, gaming models, and custom-ready pieces.
               </p>
             </div>
 
-            <div
-              className="
-                flex
-                items-center
-                justify-between
-                gap-4
-                sm:justify-end
-              "
-            >
-              <span
-                className="
-                  text-xs
-                  uppercase
-                  tracking-[0.14em]
-                  text-muted
-                "
-              >
-                {productCount} models
-              </span>
-
-              {onOpenFilters && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onOpenFilters}
-                  className="lg:hidden"
-                >
-                  <IconAdjustmentsHorizontal
-                    size={15}
-                  />
-
-                  Filters
-                </Button>
-              )}
+            <div className="hidden shrink-0 items-end text-right lg:flex">
+              <div>
+                <p className="font-serif text-4xl leading-none tracking-[-0.05em] text-primary">
+                  {productCount}
+                </p>
+                <p className="mt-1 text-[8px] uppercase tracking-[0.16em] text-muted">
+                  Models
+                </p>
+              </div>
             </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-between lg:hidden">
+            <span className="text-[10px] uppercase tracking-[0.14em] text-muted">
+              {productCount} models
+            </span>
+
+            {onOpenFilters && (
+              <Button type="button" variant="outline" size="sm" onClick={onOpenFilters}>
+                <IconAdjustmentsHorizontal size={15} />
+                Filters
+              </Button>
+            )}
           </div>
         </motion.div>
       </Container>
