@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ShopProductGrid } from "@/components/shop/ShopProductGrid";
+import { Navbar } from "@/components/layout/SiteNavbar";
 
 export const metadata: Metadata = {
   title: "Shop 3D Models | Forma",
@@ -10,8 +11,11 @@ export const metadata: Metadata = {
 
 export default function ShopPage() {
   return (
+    <>
+    <Navbar />
     <main className="min-h-screen bg-background">
       <ShopProductGrid />
     </main>
+    </>
   );
 }

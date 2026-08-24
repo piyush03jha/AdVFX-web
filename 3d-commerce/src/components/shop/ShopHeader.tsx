@@ -15,38 +15,39 @@ export function ShopHeader({
   productCount,
   onOpenFilters,
 }: ShopHeaderProps) {
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion =
+    useReducedMotion();
 
   return (
     <section className="relative overflow-hidden">
-      {/* Cinematic background */}
+      {/* Cinematic glow */}
 
       <div
         aria-hidden="true"
         className="
           pointer-events-none
           absolute
-          left-[15%]
+          left-[10%]
           top-0
           -z-10
-          h-[280px]
-          w-[420px]
+          h-[220px]
+          w-[360px]
           rounded-full
-          bg-primary/[0.045]
-          blur-[120px]
-          sm:h-[380px]
-          sm:w-[600px]
+          bg-primary/[0.04]
+          blur-[110px]
+          sm:h-[280px]
+          sm:w-[500px]
         "
       />
 
       <Container
         className="
           pb-8
-          pt-12
-          sm:pb-10
-          sm:pt-16
-          lg:pb-12
-          lg:pt-20
+          pt-8
+          sm:pb-9
+          sm:pt-10
+          lg:pb-10
+          lg:pt-12
         "
       >
         <motion.div
@@ -55,7 +56,7 @@ export function ShopHeader({
               ? false
               : {
                   opacity: 0,
-                  y: 18,
+                  y: 14,
                 }
           }
           animate={
@@ -67,38 +68,41 @@ export function ShopHeader({
                 }
           }
           transition={{
-            duration: 0.65,
+            duration: 0.6,
             ease: [0.22, 1, 0.36, 1],
           }}
         >
-          <p
-            className="
-              text-[10px]
-              font-medium
-              uppercase
-              tracking-[0.24em]
-              text-primary
-            "
-          >
-            The Collection
-          </p>
-
           <div
             className="
-              mt-3
               flex
-              flex-col
-              gap-5
-              sm:flex-row
-              sm:items-end
-              sm:justify-between
+              items-end
+              justify-between
+              gap-6
             "
           >
             <div>
+              <div className="flex items-center gap-3">
+                <span className="h-px w-7 bg-primary" />
+
+                <p
+                  className="
+                    text-[9px]
+                    font-medium
+                    uppercase
+                    tracking-[0.24em]
+                    text-primary
+                  "
+                >
+                  The Collection
+                </p>
+              </div>
+
               <h1
                 className="
+                  mt-3
+                  font-serif
                   text-4xl
-                  font-semibold
+                  font-normal
                   tracking-[-0.055em]
                   text-foreground
                   sm:text-5xl
@@ -110,57 +114,95 @@ export function ShopHeader({
 
               <p
                 className="
-                  mt-4
+                  mt-3
                   max-w-xl
                   text-sm
                   leading-6
                   text-muted
-                  sm:text-base
-                  sm:leading-7
+                  sm:text-[15px]
                 "
               >
-                Discover premium 3D assets,
-                digital collectibles, and
-                presentation-ready models.
+                Premium 3D assets, digital
+                collectibles, gaming models,
+                and custom-ready pieces.
               </p>
             </div>
 
+            {/* Desktop count */}
+
             <div
               className="
-                flex
-                items-center
-                justify-between
-                gap-4
-                sm:justify-end
+                hidden
+                shrink-0
+                items-end
+                gap-3
+                lg:flex
               "
             >
-              <span
-                className="
-                  text-xs
-                  uppercase
-                  tracking-[0.14em]
-                  text-muted
-                "
-              >
-                {productCount} models
-              </span>
-
-              {onOpenFilters && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onOpenFilters}
-                  className="lg:hidden"
+              <div className="text-right">
+                <p
+                  className="
+                    font-serif
+                    text-3xl
+                    leading-none
+                    tracking-[-0.04em]
+                    text-foreground
+                  "
                 >
-                  <IconAdjustmentsHorizontal
-                    size={15}
-                  />
+                  {productCount}
+                </p>
 
-                  Filters
-                </Button>
-              )}
+                <p
+                  className="
+                    mt-1
+                    text-[8px]
+                    uppercase
+                    tracking-[0.16em]
+                    text-muted
+                  "
+                >
+                  Models
+                </p>
+              </div>
             </div>
+          </div>
+
+          {/* Mobile count + filter */}
+
+          <div
+            className="
+              mt-6
+              flex
+              items-center
+              justify-between
+              lg:hidden
+            "
+          >
+            <span
+              className="
+                text-[10px]
+                uppercase
+                tracking-[0.14em]
+                text-muted
+              "
+            >
+              {productCount} models
+            </span>
+
+            {onOpenFilters && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onOpenFilters}
+              >
+                <IconAdjustmentsHorizontal
+                  size={15}
+                />
+
+                Filters
+              </Button>
+            )}
           </div>
         </motion.div>
       </Container>
