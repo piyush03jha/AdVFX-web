@@ -9,11 +9,7 @@ import {
   useScroll,
   useMotionValueEvent,
 } from "motion/react";
-
-import React, {
-  useRef,
-  useState,
-} from "react";
+import React, { useRef, useState } from "react";
 
 /* =========================================================
    TYPES
@@ -82,7 +78,16 @@ export const Navbar = ({
     <motion.div
       ref={ref}
       className={cn(
-        "sticky inset-x-0 top-5 z-40 w-full px-4",
+        `
+        sticky
+        inset-x-0
+        top-4
+        z-40
+        w-full
+        px-2
+        sm:px-3
+        lg:px-4
+        `,
         className,
       )}
     >
@@ -120,14 +125,25 @@ export const NavBody = ({
           ? "0 12px 40px rgba(0,0,0,0.35)"
           : "none",
 
-        width: visible ? "70%" : "100%",
+        /*
+         * Desktop navbar:
+         * - Initial: almost full width
+         * - Scrolled: slightly narrower
+         *
+         * No max-width constraint so the navbar
+         * actually responds to the viewport width.
+         */
+        width: visible
+          ? "calc(75% - 48px)"
+          : "calc(80% - 32px)",
 
-        y: visible ? 8 : 0,
+        y: visible ? 6 : 0,
       }}
       transition={{
         type: "spring",
-        stiffness: 200,
-        damping: 50,
+        stiffness: 220,
+        damping: 32,
+        mass: 0.8,
       }}
       className={cn(
         `
@@ -135,7 +151,7 @@ export const NavBody = ({
         z-[60]
         mx-auto
         hidden
-        max-w-6xl
+        w-full
         flex-row
         items-center
         justify-between
@@ -159,7 +175,6 @@ export const NavBody = ({
     </motion.div>
   );
 };
-
 /* =========================================================
    DESKTOP NAV ITEMS
 ========================================================= */
@@ -181,11 +196,10 @@ export const NavItems = ({
         absolute
         inset-0
         hidden
-        flex-1
         flex-row
         items-center
         justify-center
-        gap-1
+        gap-0.5
         text-sm
         font-medium
         lg:flex
@@ -202,7 +216,7 @@ export const NavItems = ({
           className="
             relative
             rounded-full
-            px-4
+            px-3.5
             py-2
             text-muted
             transition-colors
@@ -216,7 +230,7 @@ export const NavItems = ({
               transition={{
                 type: "spring",
                 stiffness: 350,
-                damping: 30,
+                damping: 28,
               }}
               className="
                 absolute
@@ -229,7 +243,7 @@ export const NavItems = ({
             />
           )}
 
-          <span className="relative z-20">
+          <span className="relative z-20 whitespace-nowrap">
             {item.name}
           </span>
         </Link>
@@ -258,14 +272,15 @@ export const MobileNav = ({
           ? "0 12px 40px rgba(0,0,0,0.35)"
           : "none",
 
-        width: visible ? "95%" : "100%",
+        width: visible ? "96%" : "100%",
 
-        y: visible ? 8 : 0,
+        y: visible ? 6 : 0,
       }}
       transition={{
         type: "spring",
-        stiffness: 200,
-        damping: 50,
+        stiffness: 220,
+        damping: 32,
+        mass: 0.8,
       }}
       className={cn(
         `
@@ -274,7 +289,7 @@ export const MobileNav = ({
         mx-auto
         flex
         w-full
-        max-w-[calc(100vw-2rem)]
+        max-w-[calc(100vw-1rem)]
         flex-col
         items-center
         justify-between
@@ -282,7 +297,7 @@ export const MobileNav = ({
         border
         border-border/70
         bg-background/70
-        px-3
+        px-2.5
         py-2
         lg:hidden
         `,
@@ -327,6 +342,7 @@ export const MobileNavMenu = ({
   children,
   className,
   isOpen,
+  onClose,
 }: MobileNavMenuProps) => {
   return (
     <AnimatePresence>
@@ -367,8 +383,8 @@ export const MobileNavMenu = ({
             border
             border-border
             bg-surface/95
-            px-4
-            py-6
+            px-3
+            py-5
             shadow-[0_20px_60px_rgba(0,0,0,0.45)]
             backdrop-blur-xl
             `,
@@ -407,6 +423,7 @@ export const MobileNavToggle = ({
         flex
         h-9
         w-9
+        shrink-0
         items-center
         justify-center
         rounded-full
@@ -440,6 +457,7 @@ export const NavbarLogo = () => {
         relative
         z-20
         flex
+        shrink-0
         items-center
         gap-2
         px-2
@@ -452,12 +470,12 @@ export const NavbarLogo = () => {
         hover:opacity-80
       "
     >
-      {/* Temporary logo mark */}
       <span
         className="
           flex
           h-7
           w-7
+          shrink-0
           items-center
           justify-center
           rounded-lg
@@ -471,7 +489,7 @@ export const NavbarLogo = () => {
         3D
       </span>
 
-      <span>
+      <span className="whitespace-nowrap">
         BRAND<span className="text-primary">.</span>
       </span>
     </Link>

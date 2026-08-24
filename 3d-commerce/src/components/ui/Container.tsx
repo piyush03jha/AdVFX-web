@@ -14,10 +14,10 @@ export function Container({
       className={`
         mx-auto
         w-full
-        max-w-7xl
-        px-5
-        sm:px-8
-        lg:px-10
+        max-w-[1440px]
+        px-3
+        sm:px-5
+        lg:px-6
         ${className}
       `}
     >
