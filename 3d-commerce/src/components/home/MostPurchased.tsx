@@ -5,9 +5,11 @@ import {
   motion,
   useReducedMotion,
 } from "motion/react";
+import { useState } from "react";
 
 import {
   IconArrowUpRight,
+  IconCheck,
   IconHeart,
   IconShoppingCart,
 } from "@tabler/icons-react";
@@ -19,6 +21,7 @@ import { Container } from "@/components/ui/Container";
 import { IconButton } from "@/components/ui/IconButton";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
+import { useCart } from "@/context/CartContext";
 
 import {
   mostPurchasedProducts,
@@ -54,8 +57,6 @@ export function MostPurchased() {
         lg:py-28
       "
     >
-      {/* Ambient glow */}
-
       <div
         aria-hidden="true"
         className="
@@ -75,8 +76,6 @@ export function MostPurchased() {
       />
 
       <Container>
-        {/* Header */}
-
         <motion.div
           initial={animationInitial}
           whileInView={animationWhileInView}
@@ -127,8 +126,6 @@ export function MostPurchased() {
             </h2>
           </div>
 
-          {/* Desktop View All */}
-
           <Button
             href="/models"
             variant="ghost"
@@ -155,10 +152,6 @@ export function MostPurchased() {
           </Button>
         </motion.div>
 
-        {/* =================================================
-            PRODUCTS
-        ================================================= */}
-
         <div
           className="
             flex
@@ -170,13 +163,11 @@ export function MostPurchased() {
             snap-mandatory
             [scrollbar-width:none]
             [&::-webkit-scrollbar]:hidden
-
             sm:grid
             sm:grid-cols-2
             sm:gap-5
             sm:overflow-visible
             sm:pb-0
-
             lg:grid-cols-4
           "
         >
@@ -203,245 +194,12 @@ export function MostPurchased() {
                 sm:w-auto
               "
             >
-              <Card
-                interactive
-                className="
-                  group
-                  h-full
-                  rounded-xl
-                "
-              >
-                {/* Product image */}
-
-                <Link
-                  href={`/product/${product.id}`}
-                  aria-label={`View ${product.name}`}
-                  className="block"
-                >
-                  <div
-                    className="
-                      relative
-                      aspect-[1/0.82]
-                      overflow-hidden
-                      bg-surface-elevated/40
-                      sm:aspect-[4/4.1]
-                    "
-                  >
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      loading={
-                        index === 0
-                          ? "eager"
-                          : "lazy"
-                      }
-                      className="
-                        h-full
-                        w-full
-                        object-cover
-                        transition-transform
-                        duration-700
-                        ease-[cubic-bezier(0.22,1,0.36,1)]
-                        group-hover:scale-[1.045]
-                      "
-                    />
-
-                    {/* Dark image overlay */}
-
-                    <div
-                      aria-hidden="true"
-                      className="
-                        pointer-events-none
-                        absolute
-                        inset-0
-                        bg-gradient-to-t
-                        from-black/35
-                        via-transparent
-                        to-transparent
-                      "
-                    />
-
-                    {/* Purple hover glow */}
-
-                    <div
-                      aria-hidden="true"
-                      className="
-                        pointer-events-none
-                        absolute
-                        inset-0
-                        bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.18),transparent_58%)]
-                        opacity-0
-                        transition-opacity
-                        duration-500
-                        group-hover:opacity-100
-                      "
-                    />
-
-                    {/* Category */}
-
-                    <div
-                      className="
-                        absolute
-                        left-2.5
-                        top-2.5
-                        sm:left-3
-                        sm:top-3
-                      "
-                    >
-                      <Badge
-                        variant="default"
-                        className="
-                          px-2
-                          py-0.5
-                          text-[8px]
-                        "
-                      >
-                        {product.category}
-                      </Badge>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* Product information */}
-
-                <div
-                  className="
-                    flex
-                    flex-col
-                    px-3
-                    pb-3
-                    pt-3
-                    sm:px-4
-                    sm:pb-4
-                    sm:pt-4
-                  "
-                >
-                  {/* Name + wishlist */}
-
-                  <div
-                    className="
-                      flex
-                      items-start
-                      justify-between
-                      gap-2
-                    "
-                  >
-                    <Link
-                      href={`/product/${product.id}`}
-                      className="min-w-0"
-                    >
-                      <h3
-                        className="
-                          line-clamp-2
-                          text-xs
-                          font-medium
-                          leading-4
-                          tracking-[-0.01em]
-                          text-foreground
-                          transition-colors
-                          duration-300
-                          hover:text-primary-hover
-                          sm:text-sm
-                          sm:leading-5
-                        "
-                      >
-                        {product.name}
-                      </h3>
-                    </Link>
-
-                    <IconButton
-                      label={`Add ${product.name} to wishlist`}
-                      size="sm"
-                      variant="default"
-                      onClick={() => {
-                        console.log(
-                          "Add to wishlist:",
-                          product.id,
-                        );
-                      }}
-                      className="
-                        h-7
-                        w-7
-                        shrink-0
-                        sm:h-8
-                        sm:w-8
-                      "
-                    >
-                      <IconHeart
-                        size={13}
-                        stroke={1.7}
-                        aria-hidden="true"
-                      />
-                    </IconButton>
-                  </div>
-
-                  {/* Rating */}
-
-                  <Rating
-                    value={product.rating}
-                    reviewCount={product.reviewCount}
-                    size={11}
-                    showValue
-                    className="mt-2"
-                  />
-
-                  {/* Price + cart */}
-
-                  <div
-                    className="
-                      mt-2.5
-                      flex
-                      items-center
-                      justify-between
-                      gap-2
-                      sm:mt-3
-                    "
-                  >
-                    <Price
-                      value={product.price}
-                      size="sm"
-                    />
-
-                    <Button
-                      type="button"
-                      variant="primary"
-                      size="sm"
-                      ariaLabel={`Add ${product.name} to cart`}
-                      onClick={() => {
-                        console.log(
-                          "Add to cart:",
-                          product.id,
-                        );
-                      }}
-                      className="
-                        !h-8
-                        !min-h-8
-                        !w-8
-                        !rounded-full
-                        !p-0
-                        shadow-[0_0_18px_rgba(139,92,246,0.18)]
-                        sm:!w-auto
-                        sm:!px-3
-                      "
-                    >
-                      <IconShoppingCart
-                        size={13}
-                        stroke={1.8}
-                        aria-hidden="true"
-                      />
-
-                      <span className="hidden sm:inline">
-                        Add
-                      </span>
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+              <ProductCard
+                product={product}
+              />
             </motion.div>
           ))}
         </div>
-
-        {/* Mobile swipe indicator */}
 
         <div
           className="
@@ -469,8 +227,6 @@ export function MostPurchased() {
             <span className="h-1 w-1 rounded-full bg-muted/30" />
           </div>
         </div>
-
-        {/* Mobile View All */}
 
         <div
           className="
@@ -503,5 +259,243 @@ export function MostPurchased() {
         </div>
       </Container>
     </section>
+  );
+}
+
+function ProductCard({
+  product,
+}: {
+  product: (typeof mostPurchasedProducts)[number];
+}) {
+  const { addItem } = useCart();
+  const [added, setAdded] = useState(false);
+
+  const handleAddToCart = () => {
+    addItem(product, "medium", 1);
+    setAdded(true);
+
+    window.setTimeout(() => {
+      setAdded(false);
+    }, 1600);
+  };
+
+  return (
+    <Card
+      interactive
+      className="
+        group
+        h-full
+        rounded-xl
+      "
+    >
+      <Link
+        href={`/product/${product.id}`}
+        aria-label={`View ${product.name}`}
+        className="block"
+      >
+        <div
+          className="
+            relative
+            aspect-[1/0.82]
+            overflow-hidden
+            bg-surface-elevated/40
+            sm:aspect-[4/4.1]
+          "
+        >
+          <img
+            src={product.image}
+            alt={product.name}
+            loading="lazy"
+            className="
+              h-full
+              w-full
+              object-cover
+              transition-transform
+              duration-700
+              ease-[cubic-bezier(0.22,1,0.36,1)]
+              group-hover:scale-[1.045]
+            "
+          />
+
+          <div
+            aria-hidden="true"
+            className="
+              pointer-events-none
+              absolute
+              inset-0
+              bg-gradient-to-t
+              from-black/35
+              via-transparent
+              to-transparent
+            "
+          />
+
+          <div
+            aria-hidden="true"
+            className="
+              pointer-events-none
+              absolute
+              inset-0
+              bg-[radial-gradient(circle_at_50%_45%,rgba(139,92,246,0.18),transparent_58%)]
+              opacity-0
+              transition-opacity
+              duration-500
+              group-hover:opacity-100
+            "
+          />
+
+          <div
+            className="
+              absolute
+              left-2.5
+              top-2.5
+              sm:left-3
+              sm:top-3
+            "
+          >
+            <Badge
+              variant="default"
+              className="
+                px-2
+                py-0.5
+                text-[8px]
+              "
+            >
+              {product.category}
+            </Badge>
+          </div>
+        </div>
+      </Link>
+
+      <div
+        className="
+          flex
+          flex-col
+          px-3
+          pb-3
+          pt-3
+          sm:px-4
+          sm:pb-4
+          sm:pt-4
+        "
+      >
+        <div
+          className="
+            flex
+            items-start
+            justify-between
+            gap-2
+          "
+        >
+          <Link
+            href={`/product/${product.id}`}
+            className="min-w-0"
+          >
+            <h3
+              className="
+                line-clamp-2
+                text-xs
+                font-medium
+                leading-4
+                tracking-[-0.01em]
+                text-foreground
+                transition-colors
+                duration-300
+                hover:text-primary-hover
+                sm:text-sm
+                sm:leading-5
+              "
+            >
+              {product.name}
+            </h3>
+          </Link>
+
+          <IconButton
+            label={`Add ${product.name} to wishlist`}
+            size="sm"
+            variant="default"
+            onClick={() => {
+              console.log(
+                "Add to wishlist:",
+                product.id,
+              );
+            }}
+            className="
+              h-7
+              w-7
+              shrink-0
+              sm:h-8
+              sm:w-8
+            "
+          >
+            <IconHeart
+              size={13}
+              stroke={1.7}
+              aria-hidden="true"
+            />
+          </IconButton>
+        </div>
+
+        <Rating
+          value={product.rating}
+          reviewCount={product.reviewCount}
+          size={11}
+          showValue
+          className="mt-2"
+        />
+
+        <div
+          className="
+            mt-2.5
+            flex
+            items-center
+            justify-between
+            gap-2
+            sm:mt-3
+          "
+        >
+          <Price
+            value={product.price}
+            size="sm"
+          />
+
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            ariaLabel={`Add ${product.name} to cart`}
+            onClick={handleAddToCart}
+            className="
+              !h-8
+              !min-h-8
+              !w-8
+              !rounded-full
+              !p-0
+              shadow-[0_0_18px_rgba(139,92,246,0.18)]
+              sm:!w-auto
+              sm:!px-3
+            "
+          >
+            {added ? (
+              <IconCheck
+                size={13}
+                stroke={2}
+                aria-hidden="true"
+              />
+            ) : (
+              <IconShoppingCart
+                size={13}
+                stroke={1.8}
+                aria-hidden="true"
+              />
+            )}
+
+            <span className="hidden sm:inline">
+              {added ? "Added" : "Add"}
+            </span>
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }
