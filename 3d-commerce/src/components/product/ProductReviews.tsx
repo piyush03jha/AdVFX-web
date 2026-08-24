@@ -1,5 +1,3 @@
-"use client";
-
 import {
   IconStar,
 } from "@tabler/icons-react";
@@ -32,13 +30,11 @@ export function ProductReviews({
   product,
 }: ProductReviewsProps) {
   return (
-    <section
-      className="
-        border-t
-        border-border
-        pt-12
-      "
-    >
+    <div>
+      {/* ==================================================
+          REVIEW SUMMARY
+      ================================================== */}
+
       <div
         className="
           flex
@@ -52,10 +48,10 @@ export function ProductReviews({
         <div>
           <p
             className="
-              text-[10px]
+              text-[9px]
               font-medium
               uppercase
-              tracking-[0.22em]
+              tracking-[0.2em]
               text-primary
             "
           >
@@ -64,28 +60,28 @@ export function ProductReviews({
 
           <h2
             className="
-              mt-3
+              mt-2
+              font-serif
               text-2xl
-              font-semibold
               tracking-[-0.035em]
               text-foreground
               sm:text-3xl
             "
           >
-            Reviews
+            What buyers say
           </h2>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div
-            className="
-              flex
-              items-center
-              gap-1
-            "
-          >
+        <div
+          className="
+            flex
+            items-center
+            gap-3
+          "
+        >
+          <div className="flex items-center gap-1">
             <IconStar
-              size={18}
+              size={17}
               fill="currentColor"
               className="text-primary"
             />
@@ -112,6 +108,10 @@ export function ProductReviews({
         </div>
       </div>
 
+      {/* ==================================================
+          REVIEW CARDS
+      ================================================== */}
+
       <div
         className="
           mt-7
@@ -126,32 +126,35 @@ export function ProductReviews({
             className="
               rounded-2xl
               border
-              border-border
-              bg-surface
+              border-white/[0.07]
+              bg-black/15
               p-5
             "
           >
             <div className="flex gap-0.5">
               {Array.from({
                 length: 5,
-              }).map((_, index) => (
-                <IconStar
-                  key={index}
-                  size={12}
-                  fill={
-                    index <
-                    review.rating
-                      ? "currentColor"
-                      : "none"
-                  }
-                  className={
-                    index <
-                    review.rating
-                      ? "text-primary"
-                      : "text-muted/30"
-                  }
-                />
-              ))}
+              }).map((_, index) => {
+                const filled =
+                  index < review.rating;
+
+                return (
+                  <IconStar
+                    key={index}
+                    size={12}
+                    fill={
+                      filled
+                        ? "currentColor"
+                        : "none"
+                    }
+                    className={
+                      filled
+                        ? "text-primary"
+                        : "text-muted/30"
+                    }
+                  />
+                );
+              })}
             </div>
 
             <p
@@ -167,11 +170,11 @@ export function ProductReviews({
 
             <p
               className="
-                mt-4
-                text-[10px]
+                mt-5
+                text-[9px]
                 font-medium
                 uppercase
-                tracking-[0.14em]
+                tracking-[0.16em]
                 text-foreground
               "
             >
@@ -180,6 +183,6 @@ export function ProductReviews({
           </article>
         ))}
       </div>
-    </section>
+    </div>
   );
 }

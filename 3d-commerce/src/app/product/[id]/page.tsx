@@ -1,14 +1,14 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import type { Metadata } from "next";
+import { ProductDetail } from "@/components/product/ProductDetail";
+import { Navbar } from "@/components/layout/SiteNavbar";
 
 import {
   getProductById,
   getRelatedProducts,
   products,
 } from "@/config/products";
-
-import { ProductDetail } from "@/components/product/ProductDetail";
 
 interface ProductPageProps {
   params: Promise<{
@@ -37,9 +37,8 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${product.name} | 3D Models`,
-    description:
-      product.description,
+    title: `${product.name} | Forma`,
+    description: product.description,
   };
 }
 
@@ -56,14 +55,20 @@ export default async function ProductPage({
   }
 
   const relatedProducts =
-    getRelatedProducts(product, 4);
+    getRelatedProducts(
+      product,
+      4,
+    );
 
   return (
+    <>
+    <Navbar />
     <ProductDetail
       product={product}
       relatedProducts={
         relatedProducts
       }
     />
+    </>
   );
 }

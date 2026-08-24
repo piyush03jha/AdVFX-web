@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 
 import {
@@ -24,9 +22,9 @@ export function ProductBreadcrumb({
         items-center
         gap-2
         overflow-hidden
-        text-[10px]
+        text-[9px]
         uppercase
-        tracking-[0.15em]
+        tracking-[0.16em]
       "
     >
       <Link
@@ -42,8 +40,8 @@ export function ProductBreadcrumb({
       </Link>
 
       <IconChevronRight
-        size={12}
-        className="shrink-0 text-muted/40"
+        size={11}
+        className="shrink-0 text-muted/30"
       />
 
       <Link
@@ -61,14 +59,14 @@ export function ProductBreadcrumb({
       </Link>
 
       <IconChevronRight
-        size={12}
-        className="shrink-0 text-muted/40"
+        size={11}
+        className="shrink-0 text-muted/30"
       />
 
       <span
         className="
           truncate
-          text-foreground/60
+          text-foreground/55
         "
       >
         {productName}

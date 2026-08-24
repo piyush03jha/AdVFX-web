@@ -14,127 +14,109 @@ interface ProductSpecsProps {
 export function ProductSpecs({
   product,
 }: ProductSpecsProps) {
+  const specs = [
+    {
+      icon: <IconFile3d size={18} />,
+      label: "Format",
+      value: product.format,
+    },
+    {
+      icon: <IconBox size={18} />,
+      label: "File Size",
+      value: product.fileSize,
+    },
+    {
+      icon: <IconCube size={18} />,
+      label: "Polygon Count",
+      value: product.polygonCount,
+    },
+    {
+      icon: <IconTexture size={18} />,
+      label: "Texture Resolution",
+      value:
+        product.textureResolution ??
+        "Included",
+    },
+  ];
+
   return (
-    <section
-      className="
-        border-t
-        border-border
-        pt-12
-      "
-    >
-      <div className="mb-7">
+    <div>
+      <div>
         <p
           className="
-            text-[10px]
+            text-[9px]
             font-medium
             uppercase
-            tracking-[0.22em]
+            tracking-[0.2em]
             text-primary
           "
         >
-          Technical details
+          Technical information
         </p>
 
         <h2
           className="
-            mt-3
+            mt-2
+            font-serif
             text-2xl
-            font-semibold
             tracking-[-0.035em]
             text-foreground
             sm:text-3xl
           "
         >
-          Model Specifications
+          Model specifications
         </h2>
       </div>
 
       <div
         className="
+          mt-7
           grid
           grid-cols-2
           gap-3
           sm:grid-cols-4
         "
       >
-        <Spec
-          icon={<IconFile3d size={17} />}
-          label="Format"
-          value={product.format}
-        />
+        {specs.map((spec) => (
+          <div
+            key={spec.label}
+            className="
+              rounded-2xl
+              border
+              border-white/[0.07]
+              bg-black/15
+              p-5
+            "
+          >
+            <div className="text-primary">
+              {spec.icon}
+            </div>
 
-        <Spec
-          icon={<IconBox size={17} />}
-          label="File Size"
-          value={product.fileSize}
-        />
+            <p
+              className="
+                mt-5
+                text-[9px]
+                uppercase
+                tracking-[0.16em]
+                text-muted
+              "
+            >
+              {spec.label}
+            </p>
 
-        <Spec
-          icon={<IconCube size={17} />}
-          label="Polygons"
-          value={product.polygonCount}
-        />
-
-        <Spec
-          icon={<IconTexture size={17} />}
-          label="Textures"
-          value={
-            product.textureResolution ??
-            "Included"
-          }
-        />
+            <p
+              className="
+                mt-1.5
+                text-sm
+                font-medium
+                text-foreground
+              "
+            >
+              {spec.value}
+            </p>
+          </div>
+        ))}
       </div>
-    </section>
-  );
-}
-
-function Spec({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div
-      className="
-        rounded-2xl
-        border
-        border-border
-        bg-surface
-        p-4
-        transition-colors
-        hover:border-primary/30
-      "
-    >
-      <div className="text-primary">
-        {icon}
-      </div>
-
-      <p
-        className="
-          mt-4
-          text-[9px]
-          uppercase
-          tracking-[0.16em]
-          text-muted
-        "
-      >
-        {label}
-      </p>
-
-      <p
-        className="
-          mt-1
-          text-sm
-          font-medium
-          text-foreground
-        "
-      >
-        {value}
-      </p>
     </div>
   );
 }
