@@ -6,7 +6,10 @@ import {
   IconEye,
   IconHeart,
   IconShoppingCart,
+  IconCheck,
 } from "@tabler/icons-react";
+
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +17,7 @@ import { Card } from "@/components/ui/Card";
 import { IconButton } from "@/components/ui/IconButton";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
+import { useCart } from "@/context/CartContext";
 
 import type {
   TrendingProduct,
@@ -26,6 +30,18 @@ interface ShopProductCardProps {
 export function ShopProductCard({
   product,
 }: ShopProductCardProps) {
+  const { addItem } = useCart();
+  const [added, setAdded] = useState(false);
+
+  const handleAddToCart = () => {
+    addItem(product, "medium", 1);
+    setAdded(true);
+
+    window.setTimeout(() => {
+      setAdded(false);
+    }, 1600);
+  };
+
   return (
     <Card
       interactive
@@ -67,8 +83,6 @@ export function ShopProductCard({
           />
         </Link>
 
-        {/* Image overlay */}
-
         <div
           aria-hidden="true"
           className="
@@ -81,8 +95,6 @@ export function ShopProductCard({
             to-black/10
           "
         />
-
-        {/* Purple hover glow */}
 
         <div
           aria-hidden="true"
@@ -98,8 +110,6 @@ export function ShopProductCard({
           "
         />
 
-        {/* Badge */}
-
         {product.badge && (
           <div
             className="
@@ -113,8 +123,6 @@ export function ShopProductCard({
             </Badge>
           </div>
         )}
-
-        {/* Wishlist */}
 
         <IconButton
           label={`Add ${product.name} to wishlist`}
@@ -135,8 +143,6 @@ export function ShopProductCard({
             stroke={1.6}
           />
         </IconButton>
-
-        {/* Quick view */}
 
         <div
           className="
@@ -172,12 +178,9 @@ export function ShopProductCard({
             "
           >
             <IconEye size={14} />
-
             Quick View
           </Button>
         </div>
-
-        {/* Discount */}
 
         {product.discount && (
           <div
@@ -285,11 +288,20 @@ export function ShopProductCard({
           type="button"
           variant="primary"
           size="sm"
+          onClick={handleAddToCart}
           className="mt-3 w-full"
         >
-          <IconShoppingCart size={14} />
-
-          Add to Cart
+          {added ? (
+            <>
+              <IconCheck size={14} />
+              Added to Cart
+            </>
+          ) : (
+            <>
+              <IconShoppingCart size={14} />
+              Add to Cart
+            </>
+          )}
         </Button>
       </div>
     </Card>
