@@ -1,7 +1,10 @@
 import { AccountShell } from "@/components/account/AccountShell";
+import { Navbar } from "@/components/layout/SiteNavbar";
 
 export default function AccountSettingsPage() {
   return (
+    <>
+    <Navbar />
     <AccountShell
       title="Settings"
       description="Manage your profile and account preferences."
@@ -10,5 +13,7 @@ export default function AccountSettingsPage() {
         Account preferences and profile settings will appear here.
       </div>
     </AccountShell>
+    
+    </>
   );
 }

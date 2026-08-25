@@ -1,7 +1,10 @@
 import { AccountShell } from "@/components/account/AccountShell";
+import { Navbar } from "@/components/layout/SiteNavbar";
 
 export default function WishlistPage() {
   return (
+    <>
+    <Navbar />
     <AccountShell
       title="Wishlist"
       description="Save products you want to revisit later."
@@ -10,5 +13,6 @@ export default function WishlistPage() {
         Your wishlist is ready for products you save from the catalog.
       </div>
     </AccountShell>
+    </>
   );
 }

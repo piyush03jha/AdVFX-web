@@ -1,7 +1,10 @@
 import { AccountShell } from "@/components/account/AccountShell";
+import { Navbar } from "@/components/layout/SiteNavbar";
 
 export default function AddressesPage() {
   return (
+    <>
+    <Navbar />
     <AccountShell
       title="Addresses"
       description="Manage the addresses used for your physical orders."
@@ -10,5 +13,6 @@ export default function AddressesPage() {
         Your saved shipping addresses will appear here.
       </div>
     </AccountShell>
+    </>
   );
 }

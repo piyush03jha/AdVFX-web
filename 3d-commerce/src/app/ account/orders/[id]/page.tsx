@@ -14,6 +14,7 @@ import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
 
 import { getOrderById } from "@/config/orders";
+import { Navbar } from "@/components/layout/SiteNavbar";
 
 interface OrderPageProps {
   params: Promise<{
@@ -33,6 +34,8 @@ export default async function OrderPage({
   }
 
   return (
+    <>
+    <Navbar />
     <AccountShell
       title={order.orderNumber}
       description={`Placed ${new Date(
@@ -223,5 +226,6 @@ export default async function OrderPage({
         )}
       </div>
     </AccountShell>
+    </>
   );
 }
