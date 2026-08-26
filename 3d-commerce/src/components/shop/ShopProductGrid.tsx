@@ -23,38 +23,65 @@ const INITIAL_FILTERS: ShopFilterState = {
   minRating: 0,
 };
 
-export function ShopProductGrid() {
+interface ShopProductGridProps {
+  products?: typeof trendingProducts;
+  columns?: 3 | 4;
+  activeCategory?: string;
+}
+
+export function ShopProductGrid({
+  products,
+  columns = 4,
+  activeCategory,
+}: ShopProductGridProps) {
   const shouldReduceMotion = useReducedMotion();
-  const [filters, setFilters] = useState<ShopFilterState>(INITIAL_FILTERS);
+  const sourceProducts = products ?? trendingProducts;
+
+  const [filters, setFilters] = useState<ShopFilterState>(() => ({
+    ...INITIAL_FILTERS,
+    categories: activeCategory ? [activeCategory] : [],
+  }));
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<ShopSortValue>("featured");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const categories = useMemo(
-    () => Array.from(new Set(trendingProducts.map((product) => product.category))),
-    [],
+    () => Array.from(new Set(sourceProducts.map((product) => product.category))),
+    [sourceProducts],
   );
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const result = trendingProducts.filter((product) => {
+
+    const result = sourceProducts.filter((product) => {
       const matchesSearch =
         query.length === 0 ||
         product.name.toLowerCase().includes(query) ||
         product.category.toLowerCase().includes(query);
+
       const matchesCategory =
         filters.categories.length === 0 ||
         filters.categories.includes(product.category);
+
       const matchesPrice =
-        product.price >= filters.minPrice && product.price <= filters.maxPrice;
-      const matchesRating = product.rating >= filters.minRating;
-      return matchesSearch && matchesCategory && matchesPrice && matchesRating;
+        product.price >= filters.minPrice &&
+        product.price <= filters.maxPrice;
+
+      const matchesRating =
+        product.rating >= filters.minRating;
+
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesPrice &&
+        matchesRating
+      );
     });
 
     return [...result].sort((a, b) => {
       switch (sort) {
         case "newest":
-          return trendingProducts.indexOf(b) - trendingProducts.indexOf(a);
+          return sourceProducts.indexOf(b) - sourceProducts.indexOf(a);
         case "popular":
           return b.reviewCount - a.reviewCount;
         case "rating":
@@ -68,11 +95,19 @@ export function ShopProductGrid() {
           return 0;
       }
     });
-  }, [filters, search, sort]);
+  }, [filters, search, sort, sourceProducts]);
 
-  const clearFilters = () => setFilters(INITIAL_FILTERS);
+  const clearFilters = () =>
+    setFilters({
+      ...INITIAL_FILTERS,
+      categories: activeCategory ? [activeCategory] : [],
+    });
+
   const clearAll = () => {
-    setFilters(INITIAL_FILTERS);
+    setFilters({
+      ...INITIAL_FILTERS,
+      categories: activeCategory ? [activeCategory] : [],
+    });
     setSearch("");
   };
 
@@ -107,6 +142,7 @@ export function ShopProductGrid() {
               selectedCategories={filters.categories}
               onCategoryChange={handleCategoryChange}
               onShowAll={clearAll}
+              activeCategory={activeCategory}
             />
           </div>
 
@@ -173,7 +209,11 @@ export function ShopProductGrid() {
 
           <div className="mt-8 sm:mt-9">
             {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
+              <div
+                className={`grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 ${
+                  columns === 3 ? "xl:grid-cols-3" : "xl:grid-cols-4"
+                }`}
+              >
                 {filteredProducts.map((product, index) => (
                   <motion.div
                     key={product.id}
