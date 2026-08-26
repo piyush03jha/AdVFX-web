@@ -26,8 +26,17 @@ export interface Address {
 interface AddressContextValue {
   addresses: Address[];
   defaultAddressId: string | null;
-  addAddress: (address: Omit<Address, "id" | "isDefault"> & { isDefault?: boolean }) => void;
-  updateAddress: (id: string, address: Omit<Address, "id" | "isDefault"> & { isDefault?: boolean }) => void;
+  addAddress: (
+    address: Omit<Address, "id" | "isDefault"> & {
+      isDefault?: boolean;
+    },
+  ) => void;
+  updateAddress: (
+    id: string,
+    address: Omit<Address, "id" | "isDefault"> & {
+      isDefault?: boolean;
+    },
+  ) => void;
   deleteAddress: (id: string) => void;
   setDefaultAddress: (id: string) => void;
   getAddress: (id: string) => Address | undefined;
@@ -76,21 +85,31 @@ function normalizeAddresses(input: unknown): Address[] {
 
   if (valid.length === 0) return [];
 
-  const defaultIndex = valid.findIndex((item) => item.isDefault);
+  const defaultIndex = valid.findIndex(
+    (item) => item.isDefault,
+  );
 
   return valid.map((item, index) => ({
     ...item,
-    isDefault: defaultIndex === -1 ? index === 0 : index === defaultIndex,
+    isDefault:
+      defaultIndex === -1
+        ? index === 0
+        : index === defaultIndex,
   }));
 }
 
-export function AddressProvider({ children }: { children: React.ReactNode }) {
+export function AddressProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
+
       if (!raw) {
         setAddresses(initialAddresses);
       } else {
@@ -105,10 +124,14 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoaded) return;
+
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(addresses));
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(addresses),
+      );
     } catch {
-      // Ignore storage failures; keep address state in memory.
+      // Keep address state in memory if storage is unavailable.
     }
   }, [addresses, isLoaded]);
 
@@ -122,13 +145,25 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addAddress = useCallback(
-    (address: Omit<Address, "id" | "isDefault"> & { isDefault?: boolean }) => {
-      const id = `address-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    (
+      address: Omit<Address, "id" | "isDefault"> & {
+        isDefault?: boolean;
+      },
+    ) => {
+      const id = `address-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+
       setAddresses((current) => {
-        const shouldBeDefault = address.isDefault === true || current.length === 0;
+        const shouldBeDefault =
+          address.isDefault === true ||
+          current.length === 0;
+
         const next = current.map((item) => ({
           ...item,
-          isDefault: shouldBeDefault ? false : item.isDefault,
+          isDefault: shouldBeDefault
+            ? false
+            : item.isDefault,
         }));
 
         next.push({
@@ -144,25 +179,41 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateAddress = useCallback(
-    (id: string, address: Omit<Address, "id" | "isDefault"> & { isDefault?: boolean }) => {
-      setAddresses((current) =>
-        current.map((item) => ({
+    (
+      id: string,
+      address: Omit<Address, "id" | "isDefault"> & {
+        isDefault?: boolean;
+      },
+    ) => {
+      setAddresses((current) => {
+        const makeDefault = address.isDefault === true;
+
+        return current.map((item) => ({
           ...item,
           ...(item.id === id ? address : {}),
-          isDefault: address.isDefault ? item.id === id : item.isDefault,
-        })),
-      );
+          isDefault: makeDefault
+            ? item.id === id
+            : item.isDefault,
+        }));
+      });
     },
     [],
   );
 
   const deleteAddress = useCallback((id: string) => {
     setAddresses((current) => {
-      const removed = current.find((item) => item.id === id);
-      const next = current.filter((item) => item.id !== id);
+      const removed = current.find(
+        (item) => item.id === id,
+      );
+      const next = current.filter(
+        (item) => item.id !== id,
+      );
 
       if (removed?.isDefault && next.length > 0) {
-        next[0] = { ...next[0], isDefault: true };
+        next[0] = {
+          ...next[0],
+          isDefault: true,
+        };
       }
 
       return next;
@@ -170,10 +221,12 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const defaultAddressId =
-    addresses.find((address) => address.isDefault)?.id ?? null;
+    addresses.find((address) => address.isDefault)
+      ?.id ?? null;
 
   const getAddress = useCallback(
-    (id: string) => addresses.find((address) => address.id === id),
+    (id: string) =>
+      addresses.find((address) => address.id === id),
     [addresses],
   );
 
@@ -200,14 +253,20 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-  return <AddressContext.Provider value={value}>{children}</AddressContext.Provider>;
+  return (
+    <AddressContext.Provider value={value}>
+      {children}
+    </AddressContext.Provider>
+  );
 }
 
 export function useAddresses() {
   const context = useContext(AddressContext);
 
   if (!context) {
-    throw new Error("useAddresses must be used within an AddressProvider");
+    throw new Error(
+      "useAddresses must be used within an AddressProvider",
+    );
   }
 
   return context;
