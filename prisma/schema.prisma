@@ -5,3 +5,198 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+/**
+ * ============================================================
+ * PRODUCT
+ * ============================================================
+ * Represents a physical product sold through the website.
+ * The actual 3D files are NOT stored in PostgreSQL.
+ * PostgreSQL stores metadata and storage references.
+ */
+
+model Product {
+  id String @id @default(cuid())
+
+  name String
+  slug String @unique
+
+  /**
+   * All files associated with this product.
+   * Example:
+   * - character.fbx
+   * - character.obj
+   * - character.glb
+   * - product.pdf
+   */
+  files ProductFile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * ============================================================
+ * PRODUCT FILE
+ * ============================================================
+ * Stores metadata for uploaded product files.
+ * Supported formats:
+ * .abc
+ * .usd
+ * .usda
+ * .usdc
+ * .svg
+ * .pdf
+ * .obj
+ * .ply
+ * .stl
+ * .bvh
+ * .fbx
+ * .glb
+ * .gltf
+ * Binary files will be stored outside PostgreSQL.
+ * PostgreSQL only stores their metadata/storage reference.
+ */
+
+model ProductFile {
+  id String @id @default(cuid())
+
+  /**
+   * Product relationship
+   */
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /**
+   * Original filename uploaded by admin.
+   * Example:
+   * character.fbx
+   */
+  originalName String
+
+  /**
+   * Storage identifier.
+   * Example:
+   * products/clx123/originals/character.fbx
+   */
+  storageKey String
+
+  /**
+   * Optional public/signed URL.
+   * This will depend on the storage provider
+   * we integrate later.
+   */
+  storageUrl String?
+
+  /**
+   * File format.
+   */
+  format ProductFileFormat
+
+  /**
+   * General purpose of the file.
+   */
+  fileType ProductFileType
+
+  /**
+   * MIME type supplied/detected during upload.
+   */
+  mimeType String?
+
+  /**
+   * File size in bytes.
+   */
+  fileSize BigInt
+
+  /**
+   * Conversion/optimization status.
+   */
+  processingStatus ProcessingStatus @default(PENDING)
+
+  /**
+   * Error message if processing fails.
+   */
+  processingError String?
+
+  /**
+   * If this file was generated from another file.
+   * Example:
+   * character.fbx
+   * |
+   * v
+   * character.glb
+   * The GLB's convertedFromId points to the FBX.
+   */
+  convertedFromId String?
+
+  convertedFrom ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
+
+  /**
+   * Files generated from this file.
+   * Example:
+   * FBX
+   * |
+   * +----> GLB
+   * |
+   * +----> optimized GLB
+   */
+  convertedFiles ProductFile[] @relation("ConvertedFiles")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /**
+   * Indexes
+   */
+  @@index([productId])
+  @@index([format])
+  @@index([processingStatus])
+  @@index([convertedFromId])
+}
+
+/**
+ * ============================================================
+ * PRODUCT FILE TYPE
+ * ============================================================
+ */
+
+enum ProductFileType {
+  MODEL
+  IMAGE
+  DOCUMENT
+}
+
+/**
+ * ============================================================
+ * SUPPORTED FILE FORMATS
+ * ============================================================
+ */
+
+enum ProductFileFormat {
+  ABC
+  USD
+  USDA
+  USDC
+  SVG
+  PDF
+  OBJ
+  PLY
+  STL
+  BVH
+  FBX
+  GLB
+  GLTF
+}
+
+/**
+ * ============================================================
+ * PROCESSING STATUS
+ * ============================================================
+ */
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
