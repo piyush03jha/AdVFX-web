@@ -18,6 +18,19 @@ const CATEGORY_MAP: Record<string, string> = {
   "custom-miniatures": "Custom Miniatures",
 };
 
+function slugifyCategory(category: string) {
+  return category
+    .toLowerCase()
+    .replace(/\s*\/\s*/g, "-")
+    .replace(/\s+/g, "-");
+}
+
+export async function generateStaticParams() {
+  return Object.keys(CATEGORY_MAP).map((category) => ({
+    category,
+  }));
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -46,14 +59,16 @@ export default async function CategoryShopPage({
 
   const categoryProducts = products.filter(
     (product) =>
-      product.category.toLowerCase() ===
-      categoryName.toLowerCase(),
+      product.category.toLowerCase() === categoryName.toLowerCase(),
   );
 
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-background">
+      <main
+        id={`shop-category-${slugifyCategory(categoryName)}`}
+        className="min-h-screen scroll-mt-24 bg-background"
+      >
         <div className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
           <div className="mb-8">
             <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-primary">
@@ -70,6 +85,7 @@ export default async function CategoryShopPage({
           <ShopProductGrid
             products={categoryProducts}
             columns={4}
+            activeCategory={categoryName}
           />
         </div>
       </main>
