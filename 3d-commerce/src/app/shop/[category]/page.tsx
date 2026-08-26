@@ -29,7 +29,7 @@ export async function generateMetadata({
   return {
     title: name ? `${name} | Forma` : "Shop | Forma",
     description: name
-      ? `Explore Forma products in ${name}.`
+      ? `Explore Forma physical products in ${name}.`
       : "Explore premium physical 3D products at Forma.",
   };
 }
@@ -40,15 +40,14 @@ export default async function CategoryShopPage({
   params: Promise<{ category: string }>;
 }) {
   const { category } = await params;
-  const normalized = category.toLowerCase();
-  const categoryName = CATEGORY_MAP[normalized];
+  const categoryName = CATEGORY_MAP[category.toLowerCase()];
 
-  if (!categoryName) {
-    notFound();
-  }
+  if (!categoryName) notFound();
 
   const categoryProducts = products.filter(
-    (product) => product.category.toLowerCase() === categoryName.toLowerCase(),
+    (product) =>
+      product.category.toLowerCase() ===
+      categoryName.toLowerCase(),
   );
 
   return (
@@ -68,7 +67,10 @@ export default async function CategoryShopPage({
             </p>
           </div>
 
-          <ShopProductGrid products={categoryProducts} columns={4} />
+          <ShopProductGrid
+            products={categoryProducts}
+            columns={4}
+          />
         </div>
       </main>
     </>
