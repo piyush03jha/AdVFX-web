@@ -4,19 +4,28 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-import { PrismaService } from "../prisma/prisma.service";
+import { extname } from "node:path";
 import { ProductFileFormat } from "@prisma/client";
-import { extname } from "path";
+
+import { PrismaService } from "../prisma/prisma.service";
+import { ProcessingJobsService } from "../processing-jobs/processing-jobs.service";
+import { StorageService } from "../storage/storage.service";
 
 import {
+  DOCUMENT_FORMATS,
+  IMAGE_FORMATS,
   MAX_UPLOAD_SIZE_BYTES,
   MODEL_FORMATS,
   SUPPORTED_EXTENSIONS,
   getProductFileType,
 } from "./product-file.constants";
 
-import { StorageService } from "../storage/storage.service";
-import { ProcessingJobsService } from "../processing-jobs/processing-jobs.service";
+interface UploadedProductFile {
+  originalname: string;
+  mimetype?: string | null;
+  size: number;
+  buffer: Buffer;
+}
 
 @Injectable()
 export class ProductFilesService {
@@ -26,109 +35,35 @@ export class ProductFilesService {
     private readonly processingJobs: ProcessingJobsService,
   ) {}
 
-    /**
-     * ProcessingJobsModule imports ProductFilesModule,
-     * so this dependency is circular.
-     *
-     * forwardRef allows NestJS to resolve it correctly.
-     */
-
   /**
-   * ============================================================
-   * UPLOAD PRODUCT FILE
-   * ============================================================
+   * Upload a product asset, persist its metadata, and enqueue processing.
    */
   async upload(
     productId: string,
-    file: {
-      originalname: string;
-      mimetype: string;
-      size: number;
-      buffer: Buffer;
-    },
+    file: UploadedProductFile,
   ) {
-    /**
-     * ----------------------------------------------------------
-     * Make sure the product exists.
-     * ----------------------------------------------------------
-     */
-    const product =
-      await this.prisma.product.findUnique({
-        where: {
-          id: productId,
-        },
+    await this.ensureProductExists(productId);
 
-        select: {
-          id: true,
-        },
-      });
-
-    if (!product) {
-      throw new NotFoundException(
-        `Product "${productId}" not found`,
-      );
-    }
-
-    /**
-     * ----------------------------------------------------------
-     * Make sure a file was actually uploaded.
-     * ----------------------------------------------------------
-     */
     if (!file) {
-      throw new BadRequestException(
-        "File is required",
-      );
+      throw new BadRequestException("File is required");
     }
 
-    /**
-     * ----------------------------------------------------------
-     * Reject empty files.
-     * ----------------------------------------------------------
-     */
-    if (file.size <= 0) {
-      throw new BadRequestException(
-        "Uploaded file is empty",
-      );
+    if (!file.buffer?.length || file.size <= 0) {
+      throw new BadRequestException("Uploaded file is empty");
     }
 
-    /**
-     * ----------------------------------------------------------
-     * Validate maximum upload size.
-     * ----------------------------------------------------------
-     */
-    if (
-      file.size >
-      MAX_UPLOAD_SIZE_BYTES
-    ) {
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
       throw new BadRequestException(
         `File exceeds the maximum upload size of ${
-          process.env.MAX_UPLOAD_SIZE_MB ??
-          2048
+          process.env.MAX_UPLOAD_SIZE_MB ?? 2048
         } MB`,
       );
     }
 
-    /**
-     * ----------------------------------------------------------
-     * Determine extension.
-     *
-     * Examples:
-     *
-     * character.fbx -> .fbx
-     * model.glb     -> .glb
-     * image.png     -> .png
-     * image.webp    -> .webp
-     * ----------------------------------------------------------
-     */
     const extension = extname(
       file.originalname,
     ).toLowerCase();
 
-    /**
-     * ----------------------------------------------------------
-     * Convert extension into Prisma enum.
-     * ----------------------------------------------------------
-     */
     const format =
       SUPPORTED_EXTENSIONS[
         extension as keyof typeof SUPPORTED_EXTENSIONS
@@ -136,121 +71,69 @@ export class ProductFilesService {
 
     if (!format) {
       throw new BadRequestException(
-        `Unsupported file format "${extension}". Supported formats: ${Object.keys(
+        `Unsupported file format "${extension || "unknown"}". Supported formats: ${Object.keys(
           SUPPORTED_EXTENSIONS,
         ).join(", ")}`,
       );
     }
 
-    /**
-     * ----------------------------------------------------------
-     * Validate MIME type.
-     * ----------------------------------------------------------
-     */
     this.validateMimeType(
       format,
-      file.mimetype,
+      file.mimetype ?? undefined,
     );
 
-    /**
-     * ----------------------------------------------------------
-     * Determine general file category.
-     *
-     * MODEL
-     * IMAGE
-     * DOCUMENT
-     * ----------------------------------------------------------
-     */
-    const fileType =
-      getProductFileType(format);
+    const fileType = getProductFileType(format);
 
-    /**
-     * ----------------------------------------------------------
-     * Store physical file.
-     *
-     * PostgreSQL stores metadata only.
-     * ----------------------------------------------------------
-     */
     const stored =
-      await this.storage.saveProductFile(
+      await this.storage.saveProductFile({
         productId,
-        file.originalname,
-        file.buffer,
-      );
+        filename: file.originalname,
+        buffer: file.buffer,
+      });
+
+    let createdFileId: string | null = null;
 
     try {
-      /**
-       * ========================================================
-       * CREATE PRODUCT FILE RECORD
-       * ========================================================
-       */
       const created =
         await this.prisma.productFile.create({
           data: {
             productId,
-
-            originalName:
-              file.originalname,
-
-            storageKey:
-              stored.storageKey,
-
-            storageUrl:
-              stored.storageUrl,
-
+            originalName: file.originalname,
+            storageKey: stored.storageKey,
+            storageUrl: stored.storageUrl,
             format,
-
             fileType,
-
-            mimeType:
-              file.mimetype || null,
-
-            /**
-             * Prisma schema uses BigInt.
-             */
-            fileSize:
-              BigInt(file.size),
-
-            /**
-             * Newly uploaded files must wait
-             * for the processing worker.
-             */
-            processingStatus:
-              "PENDING",
+            mimeType: this.getCanonicalMimeType(
+              format,
+              file.mimetype ?? undefined,
+            ),
+            fileSize: BigInt(file.size),
+            processingStatus: "PENDING",
           },
         });
 
+      createdFileId = created.id;
+
       /**
-       * ========================================================
-       * AUTOMATICALLY CREATE PROCESSING JOB
-       * ========================================================
-       *
-       * Before this change you had to manually run:
-       *
-       * POST /processing-jobs
-       *
-       * Now every uploaded file automatically gets
-       * a processing job.
+       * Queue processing immediately. The job service protects against
+       * duplicate active jobs for the same ProductFile.
        */
       await this.processingJobs.create(created.id);
 
-      /**
-       * --------------------------------------------------------
-       * Return serialized file.
-       *
-       * BigInt cannot be JSON serialized by Fastify.
-       * --------------------------------------------------------
-       */
-      return this.serializeFile(
-        created,
-      );
+      return this.serializeFile(created);
     } catch (error) {
-      /**
-       * --------------------------------------------------------
-       * If database/job creation fails,
-       * remove the physical file.
-       * --------------------------------------------------------
-       */
+      if (createdFileId) {
+        try {
+          await this.prisma.productFile.delete({
+            where: {
+              id: createdFileId,
+            },
+          });
+        } catch {
+          // Preserve the original error. A cleanup failure should not mask it.
+        }
+      }
+
       await this.storage.delete(
         stored.storageKey,
       );
@@ -260,56 +143,40 @@ export class ProductFilesService {
   }
 
   /**
-   * ============================================================
-   * GET ALL FILES FOR PRODUCT
-   * ============================================================
+   * Get all files belonging to a product.
    */
-  async findAll(
-    productId: string,
-  ) {
-    await this.ensureProductExists(
-      productId,
-    );
+  async findAll(productId: string) {
+    await this.ensureProductExists(productId);
 
     const files =
-      await this.prisma.productFile.findMany(
-        {
-          where: {
-            productId,
-          },
-
-          orderBy: {
-            createdAt: "desc",
-          },
+      await this.prisma.productFile.findMany({
+        where: {
+          productId,
         },
-      );
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
 
-    /**
-     * Convert BigInt values before returning.
-     */
     return files.map((file) =>
       this.serializeFile(file),
     );
   }
 
   /**
-   * ============================================================
-   * GET SINGLE FILE
-   * ============================================================
+   * Get one file belonging to a product.
    */
   async findOne(
     productId: string,
     fileId: string,
   ) {
     const file =
-      await this.prisma.productFile.findFirst(
-        {
-          where: {
-            id: fileId,
-            productId,
-          },
+      await this.prisma.productFile.findFirst({
+        where: {
+          id: fileId,
+          productId,
         },
-      );
+      });
 
     if (!file) {
       throw new NotFoundException(
@@ -317,34 +184,27 @@ export class ProductFilesService {
       );
     }
 
-    return this.serializeFile(
-      file,
-    );
+    return this.serializeFile(file);
   }
 
   /**
-   * ============================================================
-   * DELETE FILE
-   * ============================================================
+   * Delete a product file and all processing jobs that belong to it.
    */
   async delete(
     productId: string,
     fileId: string,
   ) {
-    /**
-     * ----------------------------------------------------------
-     * Find file first.
-     * ----------------------------------------------------------
-     */
     const file =
-      await this.prisma.productFile.findFirst(
-        {
-          where: {
-            id: fileId,
-            productId,
-          },
+      await this.prisma.productFile.findFirst({
+        where: {
+          id: fileId,
+          productId,
         },
-      );
+        select: {
+          id: true,
+          storageKey: true,
+        },
+      });
 
     if (!file) {
       throw new NotFoundException(
@@ -353,9 +213,8 @@ export class ProductFilesService {
     }
 
     /**
-     * ----------------------------------------------------------
-     * Delete database record first.
-     * ----------------------------------------------------------
+     * ProductFileProcessingJob has onDelete: Cascade, so deleting the
+     * ProductFile removes its source jobs as well.
      */
     await this.prisma.productFile.delete({
       where: {
@@ -363,11 +222,6 @@ export class ProductFilesService {
       },
     });
 
-    /**
-     * ----------------------------------------------------------
-     * Delete physical file.
-     * ----------------------------------------------------------
-     */
     await this.storage.delete(
       file.storageKey,
     );
@@ -378,11 +232,6 @@ export class ProductFilesService {
     };
   }
 
-  /**
-   * ============================================================
-   * ENSURE PRODUCT EXISTS
-   * ============================================================
-   */
   private async ensureProductExists(
     productId: string,
   ) {
@@ -391,7 +240,6 @@ export class ProductFilesService {
         where: {
           id: productId,
         },
-
         select: {
           id: true,
         },
@@ -404,19 +252,6 @@ export class ProductFilesService {
     }
   }
 
-  /**
-   * ============================================================
-   * SERIALIZE PRODUCT FILE
-   * ============================================================
-   *
-   * Prisma returns:
-   *
-   * fileSize: bigint
-   *
-   * Fastify cannot serialize bigint.
-   *
-   * Convert it to a normal number.
-   */
   private serializeFile<
     T extends {
       fileSize: bigint;
@@ -424,59 +259,110 @@ export class ProductFilesService {
   >(file: T) {
     return {
       ...file,
-
-      fileSize:
-        Number(file.fileSize),
+      fileSize: file.fileSize.toString(),
     };
   }
 
   /**
-   * ============================================================
-   * MIME TYPE VALIDATION
-   * ============================================================
+   * Normalize client-provided MIME values to stable application values.
+   */
+  private getCanonicalMimeType(
+    format: ProductFileFormat,
+    providedMimeType?: string,
+  ): string | null {
+    switch (format) {
+      case ProductFileFormat.PNG:
+        return "image/png";
+      case ProductFileFormat.JPG:
+      case ProductFileFormat.JPEG:
+        return "image/jpeg";
+      case ProductFileFormat.WEBP:
+        return "image/webp";
+      case ProductFileFormat.SVG:
+        return "image/svg+xml";
+      case ProductFileFormat.PDF:
+        return "application/pdf";
+      case ProductFileFormat.GLB:
+        return "model/gltf-binary";
+      case ProductFileFormat.GLTF:
+        return "model/gltf+json";
+      default:
+        return providedMimeType?.trim() || null;
+    }
+  }
+
+  /**
+   * Validate client MIME hints where a stable MIME is expected.
+   * Generic application/octet-stream is accepted for model files because
+   * many clients do not provide useful model MIME types.
    */
   private validateMimeType(
     format: ProductFileFormat,
-    mimeType: string,
+    mimeType?: string,
   ) {
-    /**
-     * Some clients/proxies may not provide
-     * a MIME type.
-     */
     if (!mimeType) {
       return;
     }
 
-    /**
-     * ========================================================
-     * 3D / MODEL FORMATS
-     * ========================================================
-     */
-    if (
-      MODEL_FORMATS.has(format)
-    ) {
-      const allowedMimeTypes = [
+    const normalized = mimeType
+      .split(";", 1)[0]
+      .trim()
+      .toLowerCase();
+
+    if (MODEL_FORMATS.has(format)) {
+      const allowed = new Set([
         "application/octet-stream",
         "application/json",
         "model/gltf+json",
         "model/gltf-binary",
-        "application/vnd.ms-pki.stl",
-        "text/plain",
-        "application/x-tgif",
-
-        /**
-         * Additional common MIME types.
-         */
         "model/obj",
         "model/stl",
+        "text/plain",
+        "application/vnd.ms-pki.stl",
+        "application/x-tgif",
         "application/x-3ds",
         "application/x-blender",
-      ];
+      ]);
+
+      if (!allowed.has(normalized)) {
+        throw new BadRequestException(
+          `Unexpected MIME type "${mimeType}" for ${format}`,
+        );
+      }
+
+      return;
+    }
+
+    if (IMAGE_FORMATS.has(format)) {
+      const allowedByFormat: Partial<
+        Record<ProductFileFormat, Set<string>>
+      > = {
+        [ProductFileFormat.PNG]: new Set([
+          "image/png",
+        ]),
+        [ProductFileFormat.JPG]: new Set([
+          "image/jpeg",
+        ]),
+        [ProductFileFormat.JPEG]: new Set([
+          "image/jpeg",
+        ]),
+        [ProductFileFormat.WEBP]: new Set([
+          "image/webp",
+        ]),
+        [ProductFileFormat.SVG]: new Set([
+          "image/svg+xml",
+          "text/xml",
+          "application/xml",
+        ]),
+      };
+
+      const allowed =
+        allowedByFormat[format];
 
       if (
-        !allowedMimeTypes.includes(
-          mimeType,
-        )
+        allowed &&
+        !allowed.has(normalized) &&
+        normalized !== "application/octet-stream"
       ) {
         throw new BadRequestException(
           `Unexpected MIME type "${mimeType}" for ${format}`,
@@ -486,39 +372,16 @@ export class ProductFilesService {
       return;
     }
 
-    /**
-     * ========================================================
-     * SVG
-     * ========================================================
-     */
-    if (
-      format ===
-        ProductFileFormat.SVG &&
-      ![
-        "image/svg+xml",
-        "text/xml",
-        "application/xml",
-      ].includes(mimeType)
-    ) {
-      throw new BadRequestException(
-        `Unexpected MIME type "${mimeType}" for SVG`,
-      );
-    }
-
-    /**
-     * ========================================================
-     * PDF
-     * ========================================================
-     */
-    if (
-      format ===
-        ProductFileFormat.PDF &&
-      mimeType !==
-        "application/pdf"
-    ) {
-      throw new BadRequestException(
-        `Unexpected MIME type "${mimeType}" for PDF`,
-      );
+    if (DOCUMENT_FORMATS.has(format)) {
+      if (
+        format === ProductFileFormat.PDF &&
+        normalized !== "application/pdf" &&
+        normalized !== "application/octet-stream"
+      ) {
+        throw new BadRequestException(
+          `Unexpected MIME type "${mimeType}" for PDF`,
+        );
+      }
     }
   }
 }
