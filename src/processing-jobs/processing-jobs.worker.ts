@@ -10,11 +10,12 @@ import {
   ProductFileType,
 } from "@prisma/client";
 
-import { promises as fs } from "fs";
-import path from "path";
+import { promises as fs } from "node:fs";
 
-import { ProcessingJobs2DWorker } from "./processing-jobs-2d.worker";
 import { PrismaService } from "../prisma/prisma.service";
+import { StorageService } from "../storage/storage.service";
+import { FileContentValidationService } from "../product-files/file-content-validation.service";
+import { ProcessingJobs2DWorker } from "./processing-jobs-2d.worker";
 import { ImageProcessingService } from "./image-processing.service";
 
 @Injectable()
@@ -25,24 +26,25 @@ export class ProcessingJobsWorker {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+    private readonly contentValidator: FileContentValidationService,
     private readonly processingJobs2DWorker: ProcessingJobs2DWorker,
     private readonly imageProcessingService: ImageProcessingService,
   ) {}
 
   async processNextJob() {
-    const job =
-      await this.prisma.productFileProcessingJob.findFirst({
-        where: {
-          status: ProcessingJobStatus.QUEUED,
-        },
-        orderBy: {
-          createdAt: "asc",
-        },
-        include: {
-          productFile: true,
-          outputFile: true,
-        },
-      });
+    const job = await this.prisma.productFileProcessingJob.findFirst({
+      where: {
+        status: ProcessingJobStatus.QUEUED,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+      include: {
+        productFile: true,
+        outputFile: true,
+      },
+    });
 
     if (!job) {
       this.logger.log("No queued processing jobs found.");
@@ -122,7 +124,8 @@ export class ProcessingJobsWorker {
         `Processing job ${job.id} failed: ${errorMessage}`,
       );
 
-      const shouldRetry = attempt < job.maxAttempts;
+      const shouldRetry =
+        attempt < job.maxAttempts;
 
       if (shouldRetry) {
         await this.prisma.productFile.update({
@@ -150,10 +153,6 @@ export class ProcessingJobsWorker {
               outputFile: true,
             },
           });
-
-        this.logger.warn(
-          `Job ${job.id} returned to QUEUED for retry (${attempt}/${job.maxAttempts})`,
-        );
 
         return this.serializeJob(retryJob);
       }
@@ -192,191 +191,113 @@ export class ProcessingJobsWorker {
     }
   }
 
-  private async processFile(
-    productFile: {
-      id: string;
-      fileType: ProductFileType;
-      format: ProductFileFormat;
-      storageKey: string;
-      fileSize: bigint;
-    },
-  ): Promise<void> {
-    const absolutePath = this.resolveStoragePath(productFile.storageKey);
-
-    this.logger.log(`Processing file ${productFile.id}`);
-    this.logger.log(`Format: ${productFile.format}`);
-
-    try {
-      await fs.access(absolutePath);
-    } catch {
+  private async processFile(productFile: {
+    id: string;
+    fileType: ProductFileType;
+    format: ProductFileFormat;
+    storageKey: string;
+    fileSize: bigint;
+  }): Promise<void> {
+    if (!(await this.storage.exists(productFile.storageKey))) {
       throw new Error(
         `Storage file not found: ${productFile.storageKey}`,
       );
     }
 
-    switch (productFile.format) {
-      case ProductFileFormat.GLB:
-        await this.validateGlb(productFile);
-        return;
+    const absolutePath = this.storage.getAbsolutePath(
+      productFile.storageKey,
+    );
 
-      case ProductFileFormat.GLTF:
-        await this.validateGltf(productFile);
-        return;
+    const buffer = await fs.readFile(absolutePath);
 
-      case ProductFileFormat.PNG:
-      case ProductFileFormat.JPG:
-      case ProductFileFormat.JPEG:
-      case ProductFileFormat.WEBP: {
-        const metadata =
-          await this.imageProcessingService.validateRasterImage(
-            absolutePath,
-          );
+    await this.contentValidator.validate(
+      productFile.format,
+      buffer,
+    );
 
-        await this.prisma.productFile.update({
-          where: {
-            id: productFile.id,
-          },
-          data: {
-            imageWidth: metadata.width,
-            imageHeight: metadata.height,
-            imageChannels: metadata.channels,
-            imageHasAlpha: metadata.hasAlpha,
-            imageColorSpace: metadata.space ?? null,
-          },
-        });
+    if (
+      productFile.fileType ===
+      ProductFileType.IMAGE
+    ) {
+      switch (productFile.format) {
+        case ProductFileFormat.PNG:
+        case ProductFileFormat.JPG:
+        case ProductFileFormat.JPEG:
+        case ProductFileFormat.WEBP: {
+          const metadata =
+            await this.imageProcessingService.validateRasterImage(
+              absolutePath,
+            );
 
-        this.logger.log(
-          `Image validated: ${metadata.width}x${metadata.height} ${metadata.format}`,
-        );
+          await this.prisma.productFile.update({
+            where: {
+              id: productFile.id,
+            },
+            data: {
+              imageWidth: metadata.width,
+              imageHeight: metadata.height,
+              imageChannels: metadata.channels,
+              imageHasAlpha: metadata.hasAlpha,
+              imageColorSpace: metadata.space ?? null,
+            },
+          });
 
-        return;
-      }
+          return;
+        }
 
-      case ProductFileFormat.SVG: {
-        const metadata =
+        case ProductFileFormat.SVG:
           await this.imageProcessingService.validateSvg(
             absolutePath,
           );
+          return;
 
-        this.logger.log(
-          `SVG validated: ${metadata.sizeBytes} bytes`,
-        );
-
-        return;
+        default:
+          throw new Error(
+            `Unsupported image format: ${productFile.format}`,
+          );
       }
-
-      case ProductFileFormat.PDF:
-        await this.processingJobs2DWorker.processFile(productFile);
-        return;
-
-      default:
-        throw new Error(
-          `Format ${productFile.format} does not have a processing adapter yet`,
-        );
-    }
-  }
-
-  private async validateGlb(
-    productFile: {
-      id: string;
-      storageKey: string;
-    },
-  ): Promise<void> {
-    const filePath = this.resolveStoragePath(productFile.storageKey);
-    const buffer = await fs.readFile(filePath);
-
-    if (buffer.length < 12) {
-      throw new Error("Invalid GLB: file is too small");
     }
 
-    const magic = buffer.toString("ascii", 0, 4);
-    if (magic !== "glTF") {
-      throw new Error(`Invalid GLB: invalid magic "${magic}"`);
+    if (
+      productFile.fileType ===
+      ProductFileType.DOCUMENT
+    ) {
+      await this.processingJobs2DWorker.processFile(
+        productFile,
+      );
+      return;
     }
 
-    const version = buffer.readUInt32LE(4);
-    if (version !== 2) {
-      throw new Error(`Invalid GLB: unsupported version ${version}`);
+    if (
+      productFile.fileType ===
+        ProductFileType.MODEL &&
+      productFile.format === ProductFileFormat.GLB
+    ) {
+      return;
     }
 
-    const declaredLength = buffer.readUInt32LE(8);
-    if (declaredLength !== buffer.length) {
+    if (
+      productFile.fileType ===
+      ProductFileType.MODEL
+    ) {
       throw new Error(
-        `Invalid GLB: declared length ${declaredLength} does not match actual length ${buffer.length}`,
+        `Format ${productFile.format} does not have a processing adapter yet`,
       );
     }
 
-    this.logger.log(`GLB validation successful for ${productFile.id}`);
-  }
-
-  private async validateGltf(
-    productFile: {
-      id: string;
-      storageKey: string;
-    },
-  ): Promise<void> {
-    const filePath = this.resolveStoragePath(productFile.storageKey);
-    const buffer = await fs.readFile(filePath);
-
-    let document: unknown;
-
-    try {
-      document = JSON.parse(buffer.toString("utf8"));
-    } catch {
-      throw new Error("Invalid glTF: file is not valid JSON");
-    }
-
-    if (
-      typeof document !== "object" ||
-      document === null ||
-      Array.isArray(document)
-    ) {
-      throw new Error("Invalid glTF: root must be a JSON object");
-    }
-
-    const asset = (document as { asset?: unknown }).asset;
-
-    if (
-      typeof asset !== "object" ||
-      asset === null ||
-      Array.isArray(asset) ||
-      typeof (asset as { version?: unknown }).version !== "string"
-    ) {
-      throw new Error("Invalid glTF: asset.version is required");
-    }
-
-    const version = (asset as { version: string }).version;
-    if (!version.startsWith("2.")) {
-      throw new Error(
-        `Invalid glTF: unsupported asset version ${version}`,
-      );
-    }
-
-    this.logger.log(`glTF validation successful for ${productFile.id}`);
-  }
-
-  private resolveStoragePath(storageKey: string): string {
-    const storageRoot =
-      process.env.STORAGE_ROOT ??
-      path.join(process.cwd(), "storage");
-
-    const normalizedRoot = path.resolve(storageRoot);
-    const resolvedPath = path.resolve(normalizedRoot, storageKey);
-
-    if (
-      resolvedPath !== normalizedRoot &&
-      !resolvedPath.startsWith(`${normalizedRoot}${path.sep}`)
-    ) {
-      throw new Error("Invalid storage key");
-    }
-
-    return resolvedPath;
+    throw new Error(
+      `Unsupported product file type: ${productFile.fileType}`,
+    );
   }
 
   private serializeJob<T>(job: T): T {
     return JSON.parse(
-      JSON.stringify(job, (_, value) =>
-        typeof value === "bigint" ? value.toString() : value,
+      JSON.stringify(
+        job,
+        (_, value) =>
+          typeof value === "bigint"
+            ? value.toString()
+            : value,
       ),
     );
   }
