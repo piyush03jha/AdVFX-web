@@ -19,6 +19,9 @@ import { StorageModule } from "../storage/storage.module";
     ProductFilesService,
     FileContentValidationService,
   ],
-  exports: [ProductFilesService],
+  exports: [
+    ProductFilesService,
+    FileContentValidationService,
+  ],
 })
 export class ProductFilesModule {}
