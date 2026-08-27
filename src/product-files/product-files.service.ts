@@ -19,6 +19,7 @@ import {
   SUPPORTED_EXTENSIONS,
   getProductFileType,
 } from "./product-file.constants";
+import { FileContentValidationService } from "./file-content-validation.service";
 
 interface UploadedProductFile {
   originalname: string;
@@ -33,10 +34,12 @@ export class ProductFilesService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly processingJobs: ProcessingJobsService,
+    private readonly contentValidator: FileContentValidationService,
   ) {}
 
   /**
-   * Upload a product asset, persist its metadata, and enqueue processing.
+   * Upload a product asset, validate its bytes, persist metadata,
+   * and enqueue processing.
    */
   async upload(
     productId: string,
@@ -48,11 +51,20 @@ export class ProductFilesService {
       throw new BadRequestException("File is required");
     }
 
+    if (!file.originalname?.trim()) {
+      throw new BadRequestException("Uploaded file name is missing");
+    }
+
     if (!file.buffer?.length || file.size <= 0) {
       throw new BadRequestException("Uploaded file is empty");
     }
 
-    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+    // Always use the actual buffer length. Never trust a client-supplied size.
+    if (file.size !== file.buffer.length) {
+      throw new BadRequestException("Uploaded file size is invalid");
+    }
+
+    if (file.buffer.length > MAX_UPLOAD_SIZE_BYTES) {
       throw new BadRequestException(
         `File exceeds the maximum upload size of ${
           process.env.MAX_UPLOAD_SIZE_MB ?? 2048
@@ -77,9 +89,23 @@ export class ProductFilesService {
       );
     }
 
+    /**
+     * MIME is only a client hint. application/octet-stream is common for
+     * valid model/image uploads, so the authoritative check is file content.
+     */
     this.validateMimeType(
       format,
       file.mimetype ?? undefined,
+    );
+
+    /**
+     * Validate known binary/text signatures before anything is written to
+     * storage. This catches renamed/corrupt PNG/JPEG/WEBP/PDF/GLB/glTF files
+     * immediately while leaving parser-heavy 3D formats to their workers.
+     */
+    await this.contentValidator.validate(
+      format,
+      file.buffer,
     );
 
     const fileType = getProductFileType(format);
@@ -107,17 +133,13 @@ export class ProductFilesService {
               format,
               file.mimetype ?? undefined,
             ),
-            fileSize: BigInt(file.size),
+            fileSize: BigInt(file.buffer.length),
             processingStatus: "PENDING",
           },
         });
 
       createdFileId = created.id;
 
-      /**
-       * Queue processing immediately. The job service protects against
-       * duplicate active jobs for the same ProductFile.
-       */
       await this.processingJobs.create(created.id);
 
       return this.serializeFile(created);
@@ -130,13 +152,11 @@ export class ProductFilesService {
             },
           });
         } catch {
-          // Preserve the original error. A cleanup failure should not mask it.
+          // Preserve the original error. A cleanup failure must not mask it.
         }
       }
 
-      await this.storage.delete(
-        stored.storageKey,
-      );
+      await this.storage.delete(stored.storageKey);
 
       throw error;
     }
@@ -212,23 +232,16 @@ export class ProductFilesService {
       );
     }
 
-    /**
-     * ProductFileProcessingJob has onDelete: Cascade, so deleting the
-     * ProductFile removes its source jobs as well.
-     */
     await this.prisma.productFile.delete({
       where: {
         id: file.id,
       },
     });
 
-    await this.storage.delete(
-      file.storageKey,
-    );
+    await this.storage.delete(file.storageKey);
 
     return {
-      message:
-        "Product file deleted successfully",
+      message: "Product file deleted successfully",
     };
   }
 
@@ -265,6 +278,7 @@ export class ProductFilesService {
 
   /**
    * Normalize client-provided MIME values to stable application values.
+   * The canonical value is based on the declared extension, not the client.
    */
   private getCanonicalMimeType(
     format: ProductFileFormat,
@@ -292,9 +306,9 @@ export class ProductFilesService {
   }
 
   /**
-   * Validate client MIME hints where a stable MIME is expected.
-   * Generic application/octet-stream is accepted for model files because
-   * many clients do not provide useful model MIME types.
+   * Validate the MIME hint when a client provides one.
+   * application/octet-stream is deliberately accepted because it is a
+   * legitimate generic value for uploads; content validation is authoritative.
    */
   private validateMimeType(
     format: ProductFileFormat,
@@ -309,9 +323,12 @@ export class ProductFilesService {
       .trim()
       .toLowerCase();
 
+    if (normalized === "application/octet-stream") {
+      return;
+    }
+
     if (MODEL_FORMATS.has(format)) {
       const allowed = new Set([
-        "application/octet-stream",
         "application/json",
         "model/gltf+json",
         "model/gltf-binary",
@@ -337,18 +354,10 @@ export class ProductFilesService {
       const allowedByFormat: Partial<
         Record<ProductFileFormat, Set<string>>
       > = {
-        [ProductFileFormat.PNG]: new Set([
-          "image/png",
-        ]),
-        [ProductFileFormat.JPG]: new Set([
-          "image/jpeg",
-        ]),
-        [ProductFileFormat.JPEG]: new Set([
-          "image/jpeg",
-        ]),
-        [ProductFileFormat.WEBP]: new Set([
-          "image/webp",
-        ]),
+        [ProductFileFormat.PNG]: new Set(["image/png"]),
+        [ProductFileFormat.JPG]: new Set(["image/jpeg"]),
+        [ProductFileFormat.JPEG]: new Set(["image/jpeg"]),
+        [ProductFileFormat.WEBP]: new Set(["image/webp"]),
         [ProductFileFormat.SVG]: new Set([
           "image/svg+xml",
           "text/xml",
@@ -356,14 +365,9 @@ export class ProductFilesService {
         ]),
       };
 
-      const allowed =
-        allowedByFormat[format];
+      const allowed = allowedByFormat[format];
 
-      if (
-        allowed &&
-        !allowed.has(normalized) &&
-        normalized !== "application/octet-stream"
-      ) {
+      if (allowed && !allowed.has(normalized)) {
         throw new BadRequestException(
           `Unexpected MIME type "${mimeType}" for ${format}`,
         );
@@ -375,8 +379,7 @@ export class ProductFilesService {
     if (DOCUMENT_FORMATS.has(format)) {
       if (
         format === ProductFileFormat.PDF &&
-        normalized !== "application/pdf" &&
-        normalized !== "application/octet-stream"
+        normalized !== "application/pdf"
       ) {
         throw new BadRequestException(
           `Unexpected MIME type "${mimeType}" for PDF`,
