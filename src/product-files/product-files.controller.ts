@@ -10,6 +10,7 @@ import {
   Res,
 } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
+
 import { ProductFilesService } from "./product-files.service";
 import { StorageService } from "../storage/storage.service";
 
@@ -26,7 +27,7 @@ export class ProductFilesController {
     @Res() reply: FastifyReply,
   ) {
     const request = reply.request as FastifyRequest & {
-      file?: () => Promise<any>;
+      file?: () => Promise<unknown>;
     };
 
     if (typeof request.file !== "function") {
@@ -41,25 +42,47 @@ export class ProductFilesController {
       throw new BadRequestException("File is required");
     }
 
-    const buffer = await uploadedFile.toBuffer();
-
-    const file = {
-      originalname: uploadedFile.filename,
-      mimetype: uploadedFile.mimetype,
-      size: buffer.length,
-      buffer,
+    const multipartFile = uploadedFile as {
+      filename?: string;
+      mimetype?: string;
+      toBuffer?: () => Promise<Buffer>;
     };
 
-    const result = await this.productFilesService.upload(
-      productId,
-      file,
-    );
+    if (
+      typeof multipartFile.filename !== "string" ||
+      !multipartFile.filename.trim()
+    ) {
+      throw new BadRequestException(
+        "Uploaded file name is missing",
+      );
+    }
+
+    if (typeof multipartFile.toBuffer !== "function") {
+      throw new BadRequestException(
+        "Uploaded file data is unavailable",
+      );
+    }
+
+    const buffer = await multipartFile.toBuffer();
+
+    const result =
+      await this.productFilesService.upload(
+        productId,
+        {
+          originalname: multipartFile.filename,
+          mimetype: multipartFile.mimetype ?? null,
+          size: buffer.length,
+          buffer,
+        },
+      );
 
     return reply.send(result);
   }
 
   @Get()
-  async findAll(@Param("productId") productId: string) {
+  async findAll(
+    @Param("productId") productId: string,
+  ) {
     return this.productFilesService.findAll(productId);
   }
 
@@ -68,7 +91,10 @@ export class ProductFilesController {
     @Param("productId") productId: string,
     @Param("fileId") fileId: string,
   ) {
-    return this.productFilesService.findOne(productId, fileId);
+    return this.productFilesService.findOne(
+      productId,
+      fileId,
+    );
   }
 
   @Get(":fileId/download")
@@ -76,23 +102,37 @@ export class ProductFilesController {
     @Param("productId") productId: string,
     @Param("fileId") fileId: string,
   ) {
-    const file = await this.productFilesService.findOne(
-      productId,
-      fileId,
-    );
-
-    const path = this.storage.getAbsolutePath(file.storageKey);
-
-    try {
-      const stream = await import("fs").then(({ createReadStream }) =>
-        createReadStream(path),
+    const file =
+      await this.productFilesService.findOne(
+        productId,
+        fileId,
       );
 
+    const absolutePath =
+      this.storage.getAbsolutePath(
+        file.storageKey,
+      );
+
+    try {
+      const { createReadStream } =
+        await import("node:fs");
+
+      const stream =
+        createReadStream(absolutePath);
+
+      stream.once("error", () => {
+        // The stream error is handled by Nest/Fastify when the response
+        // is already in flight. The pre-check below handles normal 404s.
+      });
+
       return new StreamableFile(stream, {
-        type: file.mimeType ?? "application/octet-stream",
-        disposition: `attachment; filename="${encodeURIComponent(
-          file.originalName,
-        )}"`,
+        type:
+          file.mimeType ??
+          "application/octet-stream",
+        disposition:
+          `attachment; filename="${encodeURIComponent(
+            file.originalName,
+          )}"`,
       });
     } catch {
       throw new NotFoundException(
