@@ -8,11 +8,13 @@ import { ImageProcessingService } from "./image-processing.service";
 
 import { PrismaModule } from "../prisma/prisma.module";
 import { StorageModule } from "../storage/storage.module";
+import { ProductFilesModule } from "../product-files/product-files.module";
 
 @Module({
   imports: [
     PrismaModule,
     StorageModule,
+    ProductFilesModule,
   ],
 
   controllers: [
