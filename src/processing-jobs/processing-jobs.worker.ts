@@ -7,6 +7,7 @@ import {
   ProcessingJobStatus,
   ProcessingStatus,
   ProductFileFormat,
+  ProductFileType,
 } from "@prisma/client";
 
 import { promises as fs } from "fs";
@@ -194,7 +195,7 @@ export class ProcessingJobsWorker {
   private async processFile(
     productFile: {
       id: string;
-      fileType: string;
+      fileType: ProductFileType;
       format: ProductFileFormat;
       storageKey: string;
       fileSize: bigint;
@@ -265,7 +266,7 @@ export class ProcessingJobsWorker {
       }
 
       case ProductFileFormat.PDF:
-        await this.processingJobs2DWorker.processFile(productFile as any);
+        await this.processingJobs2DWorker.processFile(productFile);
         return;
 
       default:
