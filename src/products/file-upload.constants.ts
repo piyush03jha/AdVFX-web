@@ -1,8 +1,6 @@
 export const SUPPORTED_EXTENSIONS = [
   ".abc",
   ".usd",
-  ".usda",
-  ".usdc",
   ".svg",
   ".pdf",
   ".png",
