@@ -14,10 +14,15 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
 
+  const maxUploadSizeMb = Number(
+    process.env.MAX_UPLOAD_SIZE_MB ??
+      process.env.MAX_UPLOAD_SIZE ??
+      2048,
+  );
+
   await app.register(multipart, {
     limits: {
-      fileSize:
-        Number(process.env.MAX_UPLOAD_SIZE ?? 2048) * 1024 * 1024,
+      fileSize: maxUploadSizeMb * 1024 * 1024,
       files: 1,
     },
   });
