@@ -11,7 +11,6 @@ datasource db {
  * PRODUCT
  * ============================================================
  */
-
 model Product {
   id   String @id @default(cuid())
   name String
@@ -28,60 +27,23 @@ model Product {
  * PRODUCT FILE
  * ============================================================
  */
-
 model ProductFile {
   id String @id @default(cuid())
 
-  /**
-   * Product
-   */
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  /**
-   * Original uploaded filename
-   */
   originalName String
+  storageKey   String
+  storageUrl   String?
 
-  /**
-   * Physical storage identifier
-   */
-  storageKey String
-
-  /**
-   * Optional storage/public URL
-   */
-  storageUrl String?
-
-  /**
-   * File format
-   */
-  format ProductFileFormat
-
-  /**
-   * General file category
-   */
+  format   ProductFileFormat
   fileType ProductFileType
-
-  /**
-   * MIME type
-   */
   mimeType String?
-
-  /**
-   * File size in bytes
-   */
   fileSize BigInt
 
-  /**
-   * Processing state
-   */
   processingStatus ProcessingStatus @default(PENDING)
-
-  /**
-   * Error generated during processing
-   */
-  processingError String?
+  processingError  String?
 
   imageWidth      Int?
   imageHeight     Int?
@@ -89,28 +51,11 @@ model ProductFile {
   imageHasAlpha   Boolean?
   imageColorSpace String?
 
-  /**
-   * If this file was generated from another file.
-   * Example:
-   * FBX -> GLB
-   */
   convertedFromId String?
+  convertedFrom   ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
+  convertedFiles  ProductFile[] @relation("ConvertedFiles")
 
-  convertedFrom ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
-
-  /**
-   * Files generated from this file.
-   */
-  convertedFiles ProductFile[] @relation("ConvertedFiles")
-
-  /**
-   * Processing jobs where this file is the source.
-   */
   processingJobs ProductFileProcessingJob[]
-
-  /**
-   * Processing job that generated this file.
-   */
   generatedByJob ProductFileProcessingJob? @relation("ProcessingJobOutput")
 
   createdAt DateTime @default(now())
@@ -126,53 +71,22 @@ model ProductFile {
  * ============================================================
  * PRODUCT FILE PROCESSING JOB
  * ============================================================
- * Represents an asynchronous conversion/optimization job.
- * Example:
- * FBX
- * |
- * v
- * Processing Job
- * |
- * v
- * GLB
  */
-
 model ProductFileProcessingJob {
   id String @id @default(cuid())
 
-  /**
-   * Source ProductFile
-   */
   productFileId String
   productFile   ProductFile @relation(fields: [productFileId], references: [id], onDelete: Cascade)
 
-  /**
-   * Job state
-   */
   status ProcessingJobStatus @default(QUEUED)
 
-  /**
-   * Retry information
-   */
   attempts    Int @default(0)
   maxAttempts Int @default(3)
-
-  /**
-   * Processing error
-   */
   errorMessage String?
 
-  /**
-   * Generated output ProductFile.
-   * Nullable while the job is running
-   * or if processing fails.
-   */
-  outputFileId String?      @unique
+  outputFileId String? @unique
   outputFile   ProductFile? @relation("ProcessingJobOutput", fields: [outputFileId], references: [id], onDelete: SetNull)
 
-  /**
-   * Processing timestamps
-   */
   startedAt   DateTime?
   completedAt DateTime?
 
@@ -185,10 +99,9 @@ model ProductFileProcessingJob {
 
 /**
  * ============================================================
- * PRODUCT FILE TYPE
+ * FILE TYPE
  * ============================================================
  */
-
 enum ProductFileType {
   MODEL
   IMAGE
@@ -197,22 +110,15 @@ enum ProductFileType {
 
 /**
  * ============================================================
- * PRODUCT FILE FORMAT
+ * SUPPORTED PRODUCT FILE FORMAT
  * ============================================================
+ *
+ * Only formats shown in the approved upload list are supported.
  */
-
 enum ProductFileFormat {
+  // 3D
   ABC
   USD
-  USDA
-  USDC
-
-  SVG
-  PDF
-  JPG
-  WEBP
-  PNG
-
   OBJ
   PLY
   STL
@@ -220,6 +126,16 @@ enum ProductFileFormat {
   FBX
   GLB
   GLTF
+
+  // 2D
+  PNG
+  JPG
+  JPEG
+  WEBP
+  SVG
+
+  // Document
+  PDF
 }
 
 /**
@@ -227,7 +143,6 @@ enum ProductFileFormat {
  * FILE PROCESSING STATUS
  * ============================================================
  */
-
 enum ProcessingStatus {
   PENDING
   PROCESSING
@@ -240,7 +155,6 @@ enum ProcessingStatus {
  * PROCESSING JOB STATUS
  * ============================================================
  */
-
 enum ProcessingJobStatus {
   QUEUED
   PROCESSING
