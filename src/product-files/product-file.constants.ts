@@ -4,30 +4,40 @@ import {
 } from "@prisma/client";
 
 /**
- * ============================================================
- * SUPPORTED FILE EXTENSIONS
- * ============================================================
+ * Supported product-file formats.
  *
- * Maps the uploaded file extension to the Prisma file format.
+ * 3D
+ * - Alembic (.abc)
+ * - Universal Scene Description (.usd)
+ * - glTF 2.0 (.gltf/.glb)
+ * - Wavefront OBJ (.obj)
+ * - Stanford PLY (.ply)
+ * - STL (.stl)
+ * - Motion Capture (.bvh)
+ * - FBX (.fbx)
  *
- * Keep extensions lowercase because upload validation normalizes
- * the extension before looking it up.
+ * 2D
+ * - PNG (.png)
+ * - JPEG (.jpg/.jpeg)
+ * - WEBP (.webp)
+ * - SVG (.svg)
+ *
+ * Documents
+ * - PDF (.pdf)
  */
 export const SUPPORTED_EXTENSIONS = {
-  // 3D formats
+  // 3D
   ".abc": ProductFileFormat.ABC,
   ".usd": ProductFileFormat.USD,
-  ".usda": ProductFileFormat.USDA,
-  ".usdc": ProductFileFormat.USDC,
+  ".gltf": ProductFileFormat.GLTF,
+  ".glb": ProductFileFormat.GLB,
   ".obj": ProductFileFormat.OBJ,
   ".ply": ProductFileFormat.PLY,
   ".stl": ProductFileFormat.STL,
   ".bvh": ProductFileFormat.BVH,
   ".fbx": ProductFileFormat.FBX,
-  ".glb": ProductFileFormat.GLB,
-  ".gltf": ProductFileFormat.GLTF,
 
-  // 2D image formats
+  // 2D
   ".png": ProductFileFormat.PNG,
   ".jpg": ProductFileFormat.JPG,
   ".jpeg": ProductFileFormat.JPEG,
@@ -38,35 +48,18 @@ export const SUPPORTED_EXTENSIONS = {
   ".pdf": ProductFileFormat.PDF,
 } as const;
 
-/**
- * ============================================================
- * 3D FORMATS
- * ============================================================
- */
 export const MODEL_FORMATS = new Set<ProductFileFormat>([
   ProductFileFormat.ABC,
   ProductFileFormat.USD,
-  ProductFileFormat.USDA,
-  ProductFileFormat.USDC,
+  ProductFileFormat.GLTF,
+  ProductFileFormat.GLB,
   ProductFileFormat.OBJ,
   ProductFileFormat.PLY,
   ProductFileFormat.STL,
   ProductFileFormat.BVH,
   ProductFileFormat.FBX,
-  ProductFileFormat.GLB,
-  ProductFileFormat.GLTF,
 ]);
 
-/**
- * ============================================================
- * IMAGE FORMATS
- * ============================================================
- *
- * These files belong to ProductFileType.IMAGE.
- *
- * Phase 2D will process/validate these files separately from
- * 3D model processing.
- */
 export const IMAGE_FORMATS = new Set<ProductFileFormat>([
   ProductFileFormat.PNG,
   ProductFileFormat.JPG,
@@ -75,30 +68,15 @@ export const IMAGE_FORMATS = new Set<ProductFileFormat>([
   ProductFileFormat.SVG,
 ]);
 
-/**
- * ============================================================
- * DOCUMENT FORMATS
- * ============================================================
- */
 export const DOCUMENT_FORMATS = new Set<ProductFileFormat>([
   ProductFileFormat.PDF,
 ]);
 
-/**
- * ============================================================
- * UPLOAD LIMIT
- * ============================================================
- *
- * Default: 2048 MB
- */
 export const MAX_UPLOAD_SIZE_BYTES =
-  Number(process.env.MAX_UPLOAD_SIZE_MB ?? 2048) * 1024 * 1024;
+  Number(process.env.MAX_UPLOAD_SIZE_MB ?? 2048) *
+  1024 *
+  1024;
 
-/**
- * ============================================================
- * FILE TYPE RESOLUTION
- * ============================================================
- */
 export function getProductFileType(
   format: ProductFileFormat,
 ): ProductFileType {
