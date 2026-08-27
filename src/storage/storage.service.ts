@@ -14,7 +14,6 @@ import {
   basename,
   extname,
   join,
-  parse,
   resolve,
   sep,
 } from "node:path";
@@ -31,16 +30,11 @@ export class StorageService {
       join(process.cwd(), "storage"),
   );
 
-  /**
-   * Save an uploaded product file to local storage.
-   */
   async saveProductFile(
     options: SaveProductFileOptions,
   ): Promise<StoredFile> {
-    const productId =
-      options.productId.trim();
-    const originalName =
-      options.filename.trim();
+    const productId = options.productId.trim();
+    const originalName = options.filename.trim();
 
     if (!productId) {
       throw new BadRequestException(
@@ -60,9 +54,7 @@ export class StorageService {
       );
     }
 
-    const extension = extname(
-      originalName,
-    ).toLowerCase();
+    const extension = extname(originalName).toLowerCase();
 
     if (!extension) {
       throw new BadRequestException(
@@ -117,22 +109,14 @@ export class StorageService {
 
     return {
       storageKey,
-      storageUrl:
-        `/storage/${storageKey}`,
+      storageUrl: `/storage/${storageKey}`,
       storagePath: absolutePath,
       size: options.buffer.length,
     };
   }
 
-  /**
-   * Delete a stored file.
-   * Missing files are treated as already deleted.
-   */
-  async delete(
-    storageKey: string,
-  ): Promise<void> {
-    const absolutePath =
-      this.getAbsolutePath(storageKey);
+  async delete(storageKey: string): Promise<void> {
+    const absolutePath = this.getAbsolutePath(storageKey);
 
     try {
       await unlink(absolutePath);
@@ -152,42 +136,22 @@ export class StorageService {
     }
   }
 
-  /**
-   * Check whether a stored file exists.
-   */
-  async exists(
-    storageKey: string,
-  ): Promise<boolean> {
+  async exists(storageKey: string): Promise<boolean> {
     try {
-      await access(
-        this.getAbsolutePath(storageKey),
-      );
+      await access(this.getAbsolutePath(storageKey));
       return true;
     } catch {
       return false;
     }
   }
 
-  /**
-   * Resolve a storage key to an absolute path.
-   * Path traversal outside STORAGE_ROOT is rejected.
-   */
-  getAbsolutePath(
-    storageKey: string,
-  ): string {
-    const normalizedKey =
-      storageKey.replace(/\\/g, "/");
-
-    const absolutePath = resolve(
-      this.root,
-      normalizedKey,
-    );
+  getAbsolutePath(storageKey: string): string {
+    const normalizedKey = storageKey.replace(/\\/g, "/");
+    const absolutePath = resolve(this.root, normalizedKey);
 
     if (
       absolutePath !== this.root &&
-      !absolutePath.startsWith(
-        `${this.root}${sep}`,
-      )
+      !absolutePath.startsWith(`${this.root}${sep}`)
     ) {
       throw new BadRequestException(
         "Invalid storage key",
