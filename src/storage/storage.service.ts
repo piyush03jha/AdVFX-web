@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import {
+  access,
   mkdir,
   unlink,
   writeFile,
@@ -13,32 +14,52 @@ import {
   basename,
   extname,
   join,
+  parse,
+  resolve,
+  sep,
 } from "node:path";
+
+import type {
+  SaveProductFileOptions,
+  StoredFile,
+} from "./storage.types";
 
 @Injectable()
 export class StorageService {
-  private readonly root = join(
-    process.cwd(),
-    "storage",
+  private readonly root = resolve(
+    process.env.STORAGE_ROOT ??
+      join(process.cwd(), "storage"),
   );
 
   /**
-   * ============================================================
-   * SAVE PRODUCT FILE
-   * ============================================================
-   *
-   * Stores an uploaded product file on disk.
-   *
-   * PostgreSQL stores only the metadata/storageKey.
+   * Save an uploaded product file to local storage.
    */
   async saveProductFile(
-    productId: string,
-    originalName: string,
-    buffer: Buffer,
-  ): Promise<{
-    storageKey: string;
-    storageUrl: string;
-  }> {
+    options: SaveProductFileOptions,
+  ): Promise<StoredFile> {
+    const productId =
+      options.productId.trim();
+    const originalName =
+      options.filename.trim();
+
+    if (!productId) {
+      throw new BadRequestException(
+        "Product ID is required",
+      );
+    }
+
+    if (!originalName) {
+      throw new BadRequestException(
+        "File name is required",
+      );
+    }
+
+    if (!options.buffer?.length) {
+      throw new BadRequestException(
+        "Uploaded file is empty",
+      );
+    }
+
     const extension = extname(
       originalName,
     ).toLowerCase();
@@ -49,21 +70,12 @@ export class StorageService {
       );
     }
 
-    const directory = join(
-      this.root,
-      "products",
-      productId,
-    );
-
-    await mkdir(directory, {
-      recursive: true,
-    });
-
     const safeBaseName = basename(
       originalName,
       extension,
     )
-      .replace(/[^a-zA-Z0-9-_]/g, "-")
+      .normalize("NFKC")
+      .replace(/[^a-zA-Z0-9_-]/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 100);
@@ -71,15 +83,25 @@ export class StorageService {
     const filename =
       `${randomUUID()}-${safeBaseName || "file"}${extension}`;
 
+    const productDirectory = join(
+      this.root,
+      "products",
+      productId,
+    );
+
+    await mkdir(productDirectory, {
+      recursive: true,
+    });
+
     const absolutePath = join(
-      directory,
+      productDirectory,
       filename,
     );
 
     try {
       await writeFile(
         absolutePath,
-        buffer,
+        options.buffer,
       );
     } catch {
       throw new InternalServerErrorException(
@@ -87,33 +109,42 @@ export class StorageService {
       );
     }
 
-    const storageKey =
-      `products/${productId}/${filename}`;
+    const storageKey = [
+      "products",
+      productId,
+      filename,
+    ].join("/");
 
     return {
       storageKey,
       storageUrl:
         `/storage/${storageKey}`,
+      storagePath: absolutePath,
+      size: options.buffer.length,
     };
   }
 
   /**
-   * ============================================================
-   * DELETE FILE
-   * ============================================================
+   * Delete a stored file.
+   * Missing files are treated as already deleted.
    */
   async delete(
     storageKey: string,
   ): Promise<void> {
-    const absolutePath = join(
-      this.root,
-      storageKey,
-    );
+    const absolutePath =
+      this.getAbsolutePath(storageKey);
 
     try {
       await unlink(absolutePath);
-    } catch (error: any) {
-      if (error?.code !== "ENOENT") {
+    } catch (error: unknown) {
+      const code =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error
+          ? (error as { code?: string }).code
+          : undefined;
+
+      if (code !== "ENOENT") {
         throw new InternalServerErrorException(
           "Unable to delete stored file",
         );
@@ -122,19 +153,47 @@ export class StorageService {
   }
 
   /**
-   * ============================================================
-   * GET ABSOLUTE FILE PATH
-   * ============================================================
-   *
-   * Used by processing workers to read
-   * an uploaded file from disk.
+   * Check whether a stored file exists.
+   */
+  async exists(
+    storageKey: string,
+  ): Promise<boolean> {
+    try {
+      await access(
+        this.getAbsolutePath(storageKey),
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Resolve a storage key to an absolute path.
+   * Path traversal outside STORAGE_ROOT is rejected.
    */
   getAbsolutePath(
     storageKey: string,
   ): string {
-    return join(
+    const normalizedKey =
+      storageKey.replace(/\\/g, "/");
+
+    const absolutePath = resolve(
       this.root,
-      storageKey,
+      normalizedKey,
     );
+
+    if (
+      absolutePath !== this.root &&
+      !absolutePath.startsWith(
+        `${this.root}${sep}`,
+      )
+    ) {
+      throw new BadRequestException(
+        "Invalid storage key",
+      );
+    }
+
+    return absolutePath;
   }
 }
