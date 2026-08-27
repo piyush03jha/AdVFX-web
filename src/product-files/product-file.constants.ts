@@ -1,41 +1,28 @@
-import {
-  ProductFileFormat,
-  ProductFileType,
-} from "@prisma/client";
+import { ProductFileFormat, ProductFileType } from "@prisma/client";
 
 /**
- * Supported product-file formats.
+ * Supported upload formats for the product asset system.
  *
- * 3D
- * - Alembic (.abc)
- * - Universal Scene Description (.usd)
- * - glTF 2.0 (.gltf/.glb)
- * - Wavefront OBJ (.obj)
- * - Stanford PLY (.ply)
- * - STL (.stl)
- * - Motion Capture (.bvh)
- * - FBX (.fbx)
+ * 3D:
+ * .abc .usd .obj .ply .stl .bvh .fbx .glb .gltf
  *
- * 2D
- * - PNG (.png)
- * - JPEG (.jpg/.jpeg)
- * - WEBP (.webp)
- * - SVG (.svg)
+ * 2D:
+ * .png .jpg .jpeg .webp .svg
  *
- * Documents
- * - PDF (.pdf)
+ * Document:
+ * .pdf
  */
 export const SUPPORTED_EXTENSIONS = {
   // 3D
   ".abc": ProductFileFormat.ABC,
   ".usd": ProductFileFormat.USD,
-  ".gltf": ProductFileFormat.GLTF,
-  ".glb": ProductFileFormat.GLB,
   ".obj": ProductFileFormat.OBJ,
   ".ply": ProductFileFormat.PLY,
   ".stl": ProductFileFormat.STL,
   ".bvh": ProductFileFormat.BVH,
   ".fbx": ProductFileFormat.FBX,
+  ".glb": ProductFileFormat.GLB,
+  ".gltf": ProductFileFormat.GLTF,
 
   // 2D
   ".png": ProductFileFormat.PNG,
@@ -44,20 +31,20 @@ export const SUPPORTED_EXTENSIONS = {
   ".webp": ProductFileFormat.WEBP,
   ".svg": ProductFileFormat.SVG,
 
-  // Documents
+  // Document
   ".pdf": ProductFileFormat.PDF,
 } as const;
 
 export const MODEL_FORMATS = new Set<ProductFileFormat>([
   ProductFileFormat.ABC,
   ProductFileFormat.USD,
-  ProductFileFormat.GLTF,
-  ProductFileFormat.GLB,
   ProductFileFormat.OBJ,
   ProductFileFormat.PLY,
   ProductFileFormat.STL,
   ProductFileFormat.BVH,
   ProductFileFormat.FBX,
+  ProductFileFormat.GLB,
+  ProductFileFormat.GLTF,
 ]);
 
 export const IMAGE_FORMATS = new Set<ProductFileFormat>([
@@ -73,9 +60,7 @@ export const DOCUMENT_FORMATS = new Set<ProductFileFormat>([
 ]);
 
 export const MAX_UPLOAD_SIZE_BYTES =
-  Number(process.env.MAX_UPLOAD_SIZE_MB ?? 2048) *
-  1024 *
-  1024;
+  Number(process.env.MAX_UPLOAD_SIZE_MB ?? 2048) * 1024 * 1024;
 
 export function getProductFileType(
   format: ProductFileFormat,
@@ -92,7 +77,5 @@ export function getProductFileType(
     return ProductFileType.DOCUMENT;
   }
 
-  throw new Error(
-    `Unsupported product file format: ${format}`,
-  );
+  throw new Error(`Unsupported product file format: ${format}`);
 }
