@@ -1,11 +1,12 @@
 export interface StoredFile {
   storageKey: string;
+  storageUrl: string;
   storagePath: string;
   size: number;
 }
 
-export interface SaveFileOptions {
+export interface SaveProductFileOptions {
   productId: string;
   filename: string;
-  stream: NodeJS.ReadableStream;
+  buffer: Buffer;
 }
