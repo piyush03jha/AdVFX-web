@@ -10,25 +10,13 @@ datasource db {
  * ============================================================
  * PRODUCT
  * ============================================================
- * Represents a physical product sold through the website.
- * The actual 3D files are NOT stored in PostgreSQL.
- * PostgreSQL stores metadata and storage references.
  */
 
 model Product {
-  id String @id @default(cuid())
-
+  id   String @id @default(cuid())
   name String
   slug String @unique
 
-  /**
-   * All files associated with this product.
-   * Example:
-   * - character.fbx
-   * - character.obj
-   * - character.glb
-   * - product.pdf
-   */
   files ProductFile[]
 
   createdAt DateTime @default(now())
@@ -39,93 +27,72 @@ model Product {
  * ============================================================
  * PRODUCT FILE
  * ============================================================
- * Stores metadata for uploaded product files.
- * Supported formats:
- * .abc
- * .usd
- * .usda
- * .usdc
- * .svg
- * .pdf
- * .obj
- * .ply
- * .stl
- * .bvh
- * .fbx
- * .glb
- * .gltf
- * Binary files will be stored outside PostgreSQL.
- * PostgreSQL only stores their metadata/storage reference.
  */
 
 model ProductFile {
   id String @id @default(cuid())
 
   /**
-   * Product relationship
+   * Product
    */
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   /**
-   * Original filename uploaded by admin.
-   * Example:
-   * character.fbx
+   * Original uploaded filename
    */
   originalName String
 
   /**
-   * Storage identifier.
-   * Example:
-   * products/clx123/originals/character.fbx
+   * Physical storage identifier
    */
   storageKey String
 
   /**
-   * Optional public/signed URL.
-   * This will depend on the storage provider
-   * we integrate later.
+   * Optional storage/public URL
    */
   storageUrl String?
 
   /**
-   * File format.
+   * File format
    */
   format ProductFileFormat
 
   /**
-   * General purpose of the file.
+   * General file category
    */
   fileType ProductFileType
 
   /**
-   * MIME type supplied/detected during upload.
+   * MIME type
    */
   mimeType String?
 
   /**
-   * File size in bytes.
+   * File size in bytes
    */
   fileSize BigInt
 
   /**
-   * Conversion/optimization status.
+   * Processing state
    */
   processingStatus ProcessingStatus @default(PENDING)
 
   /**
-   * Error message if processing fails.
+   * Error generated during processing
    */
   processingError String?
+
+  imageWidth      Int?
+  imageHeight     Int?
+  imageChannels   Int?
+  imageHasAlpha   Boolean?
+  imageColorSpace String?
 
   /**
    * If this file was generated from another file.
    * Example:
-   * character.fbx
-   * |
-   * v
-   * character.glb
-   * The GLB's convertedFromId points to the FBX.
+   * FBX -> GLB
    */
   convertedFromId String?
 
@@ -133,25 +100,87 @@ model ProductFile {
 
   /**
    * Files generated from this file.
-   * Example:
-   * FBX
-   * |
-   * +----> GLB
-   * |
-   * +----> optimized GLB
    */
   convertedFiles ProductFile[] @relation("ConvertedFiles")
+
+  /**
+   * Processing jobs where this file is the source.
+   */
+  processingJobs ProductFileProcessingJob[]
+
+  /**
+   * Processing job that generated this file.
+   */
+  generatedByJob ProductFileProcessingJob? @relation("ProcessingJobOutput")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  /**
-   * Indexes
-   */
   @@index([productId])
   @@index([format])
   @@index([processingStatus])
   @@index([convertedFromId])
+}
+
+/**
+ * ============================================================
+ * PRODUCT FILE PROCESSING JOB
+ * ============================================================
+ * Represents an asynchronous conversion/optimization job.
+ * Example:
+ * FBX
+ * |
+ * v
+ * Processing Job
+ * |
+ * v
+ * GLB
+ */
+
+model ProductFileProcessingJob {
+  id String @id @default(cuid())
+
+  /**
+   * Source ProductFile
+   */
+  productFileId String
+  productFile   ProductFile @relation(fields: [productFileId], references: [id], onDelete: Cascade)
+
+  /**
+   * Job state
+   */
+  status ProcessingJobStatus @default(QUEUED)
+
+  /**
+   * Retry information
+   */
+  attempts    Int @default(0)
+  maxAttempts Int @default(3)
+
+  /**
+   * Processing error
+   */
+  errorMessage String?
+
+  /**
+   * Generated output ProductFile.
+   * Nullable while the job is running
+   * or if processing fails.
+   */
+  outputFileId String?      @unique
+  outputFile   ProductFile? @relation("ProcessingJobOutput", fields: [outputFileId], references: [id], onDelete: SetNull)
+
+  /**
+   * Processing timestamps
+   */
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productFileId])
+  @@index([status])
 }
 
 /**
@@ -168,7 +197,7 @@ enum ProductFileType {
 
 /**
  * ============================================================
- * SUPPORTED FILE FORMATS
+ * PRODUCT FILE FORMAT
  * ============================================================
  */
 
@@ -177,8 +206,13 @@ enum ProductFileFormat {
   USD
   USDA
   USDC
+
   SVG
   PDF
+  JPG
+  WEBP
+  PNG
+
   OBJ
   PLY
   STL
@@ -190,12 +224,25 @@ enum ProductFileFormat {
 
 /**
  * ============================================================
- * PROCESSING STATUS
+ * FILE PROCESSING STATUS
  * ============================================================
  */
 
 enum ProcessingStatus {
   PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+/**
+ * ============================================================
+ * PROCESSING JOB STATUS
+ * ============================================================
+ */
+
+enum ProcessingJobStatus {
+  QUEUED
   PROCESSING
   COMPLETED
   FAILED
