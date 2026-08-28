@@ -16,7 +16,10 @@ export default function Home() {
       <main>
         <Hero />
 
-        <MostPurchased />
+        <section id="collection" aria-label="3D model collection">
+          <MostPurchased />
+        </section>
+
         <CustomBuild />
         <ShopByCategory />
         <TrendingNow />
