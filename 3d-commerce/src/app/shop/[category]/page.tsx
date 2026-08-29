@@ -69,25 +69,11 @@ export default async function CategoryShopPage({
         id={`shop-category-${slugifyCategory(categoryName)}`}
         className="min-h-screen scroll-mt-24 bg-background"
       >
-        <div className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
-          <div className="mb-8">
-            <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-primary">
-              Collection
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-5xl">
-              {categoryName}
-            </h1>
-            <p className="mt-2 text-sm text-muted">
-              {categoryProducts.length} products available
-            </p>
-          </div>
-
-          <ShopProductGrid
-            products={categoryProducts}
-            columns={4}
-            activeCategory={categoryName}
-          />
-        </div>
+        <ShopProductGrid
+          products={categoryProducts}
+          columns={4}
+          activeCategory={categoryName}
+        />
       </main>
     </>
   );
