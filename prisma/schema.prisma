@@ -24,7 +24,6 @@ model User {
   customRequests CustomRequest[]
   customRequestRevisions CustomRequestRevision[]
   notifications Notification[]
-  returnRequests ReturnRequest[]
 }
 
 enum UserRole { CUSTOMER ADMIN }
@@ -89,7 +88,6 @@ model Product {
   cartItems CartItem[]
   orderItems OrderItem[]
   customPreviewRequests CustomRequest[] @relation("CustomPreviewProduct")
-  inventoryReservations InventoryReservation[]
   createdById String?
   createdBy User? @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById String?
@@ -215,6 +213,7 @@ model CartItem {
 model Order {
   id String @id @default(cuid())
   orderNumber String @unique
+  idempotencyKey String?
   userId String?
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   status OrderStatus @default(PENDING_PAYMENT)
@@ -238,6 +237,7 @@ model Order {
   returnRequest ReturnRequest?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@unique([userId, idempotencyKey])
   @@index([userId])
   @@index([status])
   @@index([createdAt])
@@ -305,24 +305,6 @@ model Shipment {
 }
 
 enum ShipmentStatus { PENDING LABEL_CREATED SHIPPED IN_TRANSIT DELIVERED EXCEPTION }
-
-model ReturnRequest {
-  id String @id @default(cuid())
-  orderId String @unique
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status ReturnRequestStatus @default(REQUESTED)
-  reason String
-  note String?
-  resolvedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  @@index([userId, createdAt])
-  @@index([status, createdAt])
-}
-
-enum ReturnRequestStatus { REQUESTED APPROVED REJECTED RECEIVED REFUNDED }
 
 model CustomRequest {
   id String @id @default(cuid())
@@ -490,6 +472,23 @@ model Promotion {
 }
 
 enum PromotionType { PERCENTAGE FIXED }
+
+model ReturnRequest {
+  id String @id @default(cuid())
+  orderId String @unique
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason String
+  note String?
+  status ReturnRequestStatus @default(REQUESTED)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+enum ReturnRequestStatus { REQUESTED APPROVED REJECTED RECEIVED REFUNDED }
 
 model ProductFile {
   id String @id @default(cuid())
