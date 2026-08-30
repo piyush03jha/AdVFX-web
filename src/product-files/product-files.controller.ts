@@ -3,11 +3,10 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Post,
   StreamableFile,
-  NotFoundException,
-  Res,
   UseGuards,
 } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
@@ -37,13 +36,9 @@ export class ProductFilesController {
     }
 
     const uploadedFile = await request.file();
-
-    if (!uploadedFile) {
-      throw new BadRequestException("File is required");
-    }
+    if (!uploadedFile) throw new BadRequestException("File is required");
 
     const buffer = await uploadedFile.toBuffer();
-
     const file = {
       originalname: uploadedFile.filename,
       mimetype: uploadedFile.mimetype,
@@ -51,18 +46,16 @@ export class ProductFilesController {
       buffer,
     };
 
-    const result = await this.productFilesService.upload(productId, file);
-
-    return reply.send(result);
+    return reply.send(await this.productFilesService.upload(productId, file));
   }
 
   @Get()
-  async findAll(@Param("productId") productId: string) {
+  findAll(@Param("productId") productId: string) {
     return this.productFilesService.findAll(productId);
   }
 
   @Get(":fileId")
-  async findOne(
+  findOne(
     @Param("productId") productId: string,
     @Param("fileId") fileId: string,
   ) {
@@ -70,7 +63,7 @@ export class ProductFilesController {
   }
 
   @Get(":fileId/download")
-  async download(
+  async preview(
     @Param("productId") productId: string,
     @Param("fileId") fileId: string,
   ) {
@@ -78,13 +71,13 @@ export class ProductFilesController {
     const path = this.storage.getAbsolutePath(file.storageKey);
 
     try {
-      const stream = await import("fs").then(({ createReadStream }) =>
-        createReadStream(path),
-      );
+      const { createReadStream } = await import("fs");
+      const stream = createReadStream(path);
+      const safeName = file.originalName.replace(/[\\/\r\n\"']/g, "_");
 
       return new StreamableFile(stream, {
         type: file.mimeType ?? "application/octet-stream",
-        disposition: `inline; filename="${encodeURIComponent(file.originalName)}"`,
+        disposition: `inline; filename="${encodeURIComponent(safeName)}"`,
       });
     } catch {
       throw new NotFoundException("Stored file could not be found");
@@ -92,7 +85,7 @@ export class ProductFilesController {
   }
 
   @Delete(":fileId")
-  async delete(
+  delete(
     @Param("productId") productId: string,
     @Param("fileId") fileId: string,
   ) {
