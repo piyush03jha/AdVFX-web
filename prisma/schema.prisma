@@ -135,20 +135,18 @@ model ProductInventory {
 
 model InventoryReservation {
   id String @id @default(cuid())
-  productInventoryId String
-  productInventory ProductInventory @relation(fields: [productInventoryId], references: [id], onDelete: Cascade)
+  productId String
   orderId String
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
   quantity Int
   status InventoryReservationStatus @default(ACTIVE)
   expiresAt DateTime
   consumedAt DateTime?
   releasedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
   @@index([status, expiresAt])
   @@index([orderId])
-  @@index([productInventoryId])
+  @@index([productId])
 }
 
 enum InventoryReservationStatus { ACTIVE CONSUMED RELEASED EXPIRED }
@@ -220,6 +218,8 @@ model Order {
   shippingMinor Int @default(0)
   taxMinor Int @default(0)
   totalMinor Int
+  shippingRuleId String?
+  shippingRule ShippingRule? @relation(fields: [shippingRuleId], references: [id], onDelete: SetNull)
   shippingAddressId String?
   shippingAddress Address? @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
   items OrderItem[]
@@ -392,6 +392,29 @@ enum NotificationType {
   CUSTOM_APPROVED
   CUSTOM_ORDERABLE
 }
+
+model ShippingRule {
+  id String @id @default(cuid())
+  name String
+  type ShippingRuleType
+  amountMinor Int?
+  freeAboveMinor Int?
+  minWeightGrams Int?
+  maxWeightGrams Int?
+  countryCode String?
+  stateCode String?
+  estimatedMinDays Int?
+  estimatedMaxDays Int?
+  priority Int @default(0)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders Order[]
+  @@index([isActive, priority])
+  @@index([countryCode, stateCode])
+}
+
+enum ShippingRuleType { FREE FLAT_RATE FREE_ABOVE WEIGHT_BASED }
 
 model ProductFile {
   id String @id @default(cuid())
