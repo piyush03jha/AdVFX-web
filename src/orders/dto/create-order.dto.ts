@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateOrderDto {
   @IsString()
@@ -7,8 +7,13 @@ export class CreateOrderDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(64)
+  @IsNotEmpty()
   couponCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  idempotencyKey?: string;
 
   @IsOptional()
   @IsString()
