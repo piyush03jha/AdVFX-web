@@ -63,7 +63,6 @@ function CardModel({ product, index, total, mobile }: CardModelProps) {
     const targetX = centered * 0.44;
     const targetY = wave * (1 - abs * 0.42) * 0.026;
     const targetZ = depth * 0.018 - abs * 0.6;
-
     const idleFloat = Math.sin(clock.getElapsedTime() * 0.55 + index * 0.55) * (mobile ? 0.018 : 0.03);
 
     groupRef.current.position.x = THREE.MathUtils.damp(groupRef.current.position.x, targetX, 7, delta);
@@ -103,10 +102,15 @@ function CardModel({ product, index, total, mobile }: CardModelProps) {
   );
 }
 
-function ParallaxScene({ products }: { products: HeroProduct[] }) {
+function ParallaxScene({
+  products,
+  stageElementRef,
+}: {
+  products: HeroProduct[];
+  stageElementRef: React.MutableRefObject<HTMLDivElement | null>;
+}) {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null);
-  const heroRef = useRef<HTMLDivElement | null>(null);
   const scrollProgress = useRef(0);
   const targetProgress = useRef(0);
   const mobileRef = useRef(false);
@@ -124,13 +128,13 @@ function ParallaxScene({ products }: { products: HeroProduct[] }) {
 
   useEffect(() => {
     const updateScroll = () => {
-      const stage = heroRef.current;
+      const stage = stageElementRef.current;
       if (!stage) return;
 
       const rect = stage.getBoundingClientRect();
-      const travel = Math.max(rect.height + window.innerHeight * 0.65, 1);
+      const travel = Math.max(rect.height + window.innerHeight * 0.7, 1);
       targetProgress.current = THREE.MathUtils.clamp(
-        (window.innerHeight * 0.5 - rect.top) / travel,
+        (window.innerHeight * 0.58 - rect.top) / travel,
         0,
         1,
       );
@@ -144,7 +148,7 @@ function ParallaxScene({ products }: { products: HeroProduct[] }) {
       window.removeEventListener("scroll", updateScroll);
       window.removeEventListener("resize", updateScroll);
     };
-  }, []);
+  }, [stageElementRef]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -163,8 +167,18 @@ function ParallaxScene({ products }: { products: HeroProduct[] }) {
     const drift = signed * config.scrollDrift * 0.006;
     const lift = Math.sin(progress * Math.PI) * config.scrollAmplitude * 0.009;
 
-    groupRef.current.position.x = THREE.MathUtils.damp(groupRef.current.position.x, drift, 7, delta);
-    groupRef.current.position.y = THREE.MathUtils.damp(groupRef.current.position.y, -lift, 7, delta);
+    groupRef.current.position.x = THREE.MathUtils.damp(
+      groupRef.current.position.x,
+      drift,
+      7,
+      delta,
+    );
+    groupRef.current.position.y = THREE.MathUtils.damp(
+      groupRef.current.position.y,
+      -lift,
+      7,
+      delta,
+    );
     groupRef.current.rotation.z = THREE.MathUtils.damp(
       groupRef.current.rotation.z,
       THREE.MathUtils.degToRad(signed * config.scrollTilt),
@@ -200,15 +214,13 @@ function ParallaxScene({ products }: { products: HeroProduct[] }) {
 }
 
 export function HeroProductStage({ products }: HeroProductStageProps) {
+  const stageRef = useRef<HTMLDivElement>(null);
+
   if (!products.length) return null;
 
   return (
     <div
-      ref={(node) => {
-        if (node) {
-          (node as HTMLDivElement & { __heroStage?: HTMLDivElement }).__heroStage = node;
-        }
-      }}
+      ref={stageRef}
       className="relative h-[360px] w-full sm:h-[470px] lg:h-[min(68vh,720px)]"
     >
       <Canvas
@@ -221,7 +233,7 @@ export function HeroProductStage({ products }: HeroProductStageProps) {
         <directionalLight position={[4, 6, 8]} intensity={2.4} />
         <directionalLight position={[-5, 2, -3]} intensity={0.9} />
         <pointLight position={[0, 2, 6]} intensity={1.5} />
-        <ParallaxScene products={products} />
+        <ParallaxScene products={products} stageElementRef={stageRef} />
       </Canvas>
     </div>
   );
