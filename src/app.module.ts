@@ -10,6 +10,7 @@ import { ProcessingJobsModule } from "./processing-jobs/processing-jobs.module";
 import { CategoriesModule } from "./categories/categories.module";
 import { CartModule } from "./cart/cart.module";
 import { OrdersModule } from "./orders/orders.module";
+import { ShipmentsModule } from "./shipments/shipments.module";
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { OrdersModule } from "./orders/orders.module";
     ProcessingJobsModule,
     CartModule,
     OrdersModule,
+    ShipmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
