@@ -23,6 +23,7 @@ model User {
   orders    Order[]
   customRequests CustomRequest[]
   customRequestRevisions CustomRequestRevision[]
+  notifications Notification[]
 }
 
 enum UserRole { CUSTOMER ADMIN }
@@ -86,6 +87,7 @@ model Product {
   tags ProductTag[]
   cartItems CartItem[]
   orderItems OrderItem[]
+  customPreviewRequests CustomRequest[] @relation("CustomPreviewProduct")
   createdById String?
   createdBy User? @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById String?
@@ -299,6 +301,7 @@ model CustomRequest {
   status CustomRequestStatus @default(SUBMITTED)
   revisionCount Int @default(0)
   previewProductId String?
+  previewProduct Product? @relation("CustomPreviewProduct", fields: [previewProductId], references: [id], onDelete: SetNull)
   media CustomRequestMedia[]
   preview CustomRequestPreview?
   quote CustomRequestQuote?
@@ -358,6 +361,36 @@ model CustomRequestQuote {
   notes String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type NotificationType
+  title String
+  message String
+  entityType String?
+  entityId String?
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+enum NotificationType {
+  ORDER_CREATED
+  ORDER_CONFIRMED
+  ORDER_PROCESSING
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+  CUSTOM_REQUEST_SUBMITTED
+  CUSTOM_PREVIEW_READY
+  CUSTOM_REVISION_REQUESTED
+  CUSTOM_APPROVED
+  CUSTOM_ORDERABLE
 }
 
 model ProductFile {
