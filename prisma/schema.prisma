@@ -18,88 +18,80 @@ model User {
 
   createdProducts Product[] @relation("ProductCreatedBy")
   updatedProducts Product[] @relation("ProductUpdatedBy")
-
   addresses Address[]
   cart      Cart?
   orders    Order[]
+  customRequests CustomRequest[]
+  customRequestRevisions CustomRequestRevision[]
 }
 
-enum UserRole {
-  CUSTOMER
-  ADMIN
-}
+enum UserRole { CUSTOMER ADMIN }
 
 model Address {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName   String
-  phone      String
-  line1      String
-  line2      String?
-  city       String
-  state      String
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName String
+  phone String
+  line1 String
+  line2 String?
+  city String
+  state String
   postalCode String
-  country    String   @default("IN")
-  isDefault  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
+  country String @default("IN")
+  isDefault Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   orders Order[]
-
   @@index([userId])
 }
 
 model Category {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
+  id String @id @default(cuid())
+  name String
+  slug String @unique
   description String?
-  imageUrl    String?
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  imageUrl String?
+  sortOrder Int @default(0)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   products Product[]
-
   @@index([isActive, sortOrder])
 }
 
 model Product {
-  id             String        @id @default(cuid())
-  name           String
-  slug           String        @unique
-  description    String?
-  categoryId     String?
-  category       Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  status         ProductStatus @default(DRAFT)
-  isFeatured     Boolean       @default(false)
-  isTrending     Boolean       @default(false)
-  isBestseller   Boolean       @default(false)
-  badge          String?
-  material       String?
-  scale          String?
-  dimensions     String?
-  height         String?
-  base           String?
-  packaging      String?
-  weight         String?
-  inventory      ProductInventory?
-  inventoryReservations InventoryReservation[]
-  prices         ProductPrice[]
-  media          ProductMedia[]
-  files          ProductFile[]
-  tags           ProductTag[]
-  cartItems      CartItem[]
-  orderItems     OrderItem[]
-  createdById    String?
-  createdBy      User?         @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedById    String?
-  updatedBy      User?         @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
+  id String @id @default(cuid())
+  name String
+  slug String @unique
+  description String?
+  categoryId String?
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  status ProductStatus @default(DRAFT)
+  isFeatured Boolean @default(false)
+  isTrending Boolean @default(false)
+  isBestseller Boolean @default(false)
+  badge String?
+  material String?
+  scale String?
+  dimensions String?
+  height String?
+  base String?
+  packaging String?
+  weight String?
+  inventory ProductInventory?
+  prices ProductPrice[]
+  media ProductMedia[]
+  files ProductFile[]
+  tags ProductTag[]
+  cartItems CartItem[]
+  orderItems OrderItem[]
+  createdById String?
+  createdBy User? @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedBy User? @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   @@index([categoryId])
   @@index([status])
   @@index([isFeatured])
@@ -107,239 +99,262 @@ model Product {
   @@index([isBestseller])
 }
 
-enum ProductStatus {
-  DRAFT
-  ACTIVE
-  ARCHIVED
-}
+enum ProductStatus { DRAFT ACTIVE ARCHIVED }
 
 model ProductPrice {
-  id             String   @id @default(cuid())
-  productId      String
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  currency       String   @default("INR")
-  amountMinor    Int
+  id String @id @default(cuid())
+  productId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  currency String @default("INR")
+  amountMinor Int
   compareAtMinor Int?
-  isActive       Boolean  @default(true)
-  startsAt       DateTime?
-  endsAt         DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
+  isActive Boolean @default(true)
+  startsAt DateTime?
+  endsAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   @@index([productId, isActive])
   @@index([currency])
 }
 
 model ProductInventory {
-  id             String   @id @default(cuid())
-  productId      String   @unique
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  stock          Int      @default(0)
-  reserved       Int      @default(0)
-  lowStockAt     Int      @default(5)
-  trackStock     Boolean  @default(true)
-  allowBackorder Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id String @id @default(cuid())
+  productId String @unique
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stock Int @default(0)
+  reserved Int @default(0)
+  lowStockAt Int @default(5)
+  trackStock Boolean @default(true)
+  allowBackorder Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reservations InventoryReservation[]
 }
 
 model InventoryReservation {
-  id         String   @id @default(cuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  orderId    String
-  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  quantity   Int
-  status     InventoryReservationStatus @default(ACTIVE)
-  expiresAt  DateTime
+  id String @id @default(cuid())
+  productInventoryId String
+  productInventory ProductInventory @relation(fields: [productInventoryId], references: [id], onDelete: Cascade)
+  orderId String
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  quantity Int
+  status InventoryReservationStatus @default(ACTIVE)
+  expiresAt DateTime
+  consumedAt DateTime?
   releasedAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@unique([orderId, productId])
-  @@index([productId, status])
-  @@index([expiresAt, status])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, expiresAt])
+  @@index([orderId])
+  @@index([productInventoryId])
 }
 
-enum InventoryReservationStatus {
-  ACTIVE
-  CONSUMED
-  RELEASED
-  EXPIRED
-}
+enum InventoryReservationStatus { ACTIVE CONSUMED RELEASED EXPIRED }
 
 model ProductMedia {
-  id         String           @id @default(cuid())
-  productId  String
-  product    Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
-  type       ProductMediaType
-  url        String
-  altText    String?
-  sortOrder  Int              @default(0)
-  isPrimary  Boolean          @default(false)
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
-
+  id String @id @default(cuid())
+  productId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type ProductMediaType
+  url String
+  altText String?
+  sortOrder Int @default(0)
+  isPrimary Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   @@index([productId, type, sortOrder])
 }
 
-enum ProductMediaType {
-  IMAGE
-  MODEL_PREVIEW
-}
+enum ProductMediaType { IMAGE MODEL_PREVIEW }
 
 model Tag {
-  id        String       @id @default(cuid())
-  name      String       @unique
-  slug      String       @unique
-  createdAt DateTime     @default(now())
-  products  ProductTag[]
+  id String @id @default(cuid())
+  name String @unique
+  slug String @unique
+  createdAt DateTime @default(now())
+  products ProductTag[]
 }
 
 model ProductTag {
   productId String
-  tagId     String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
+  tagId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
   @@id([productId, tagId])
   @@index([tagId])
 }
 
 model Cart {
-  id        String     @id @default(cuid())
-  userId    String     @unique
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     CartItem[]
-  createdAt DateTime   @default(now())
+  id String @id @default(cuid())
+  userId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model CartItem {
-  id        String  @id @default(cuid())
-  cartId    String
-  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  id String @id @default(cuid())
+  cartId String
+  cart Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  quantity  Int
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   @@unique([cartId, productId])
   @@index([productId])
 }
 
 model Order {
-  id                 String        @id @default(cuid())
-  orderNumber        String        @unique
-  userId             String?
-  user               User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  status             OrderStatus   @default(PENDING_PAYMENT)
-  currency           String        @default("INR")
-  subtotalMinor     Int
-  discountMinor     Int            @default(0)
-  shippingMinor     Int            @default(0)
-  taxMinor           Int            @default(0)
-  totalMinor         Int
+  id String @id @default(cuid())
+  orderNumber String @unique
+  userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status OrderStatus @default(PENDING_PAYMENT)
+  currency String @default("INR")
+  subtotalMinor Int
+  discountMinor Int @default(0)
+  shippingMinor Int @default(0)
+  taxMinor Int @default(0)
+  totalMinor Int
   shippingAddressId String?
-  shippingAddress    Address?      @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
-  items              OrderItem[]
+  shippingAddress Address? @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
+  items OrderItem[]
+  payment Payment?
+  shipment Shipment?
   inventoryReservations InventoryReservation[]
-  payment            Payment?
-  shipment           Shipment?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   @@index([userId])
   @@index([status])
   @@index([createdAt])
 }
 
-enum OrderStatus {
-  PENDING_PAYMENT
-  CONFIRMED
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
-  REFUNDED
-}
+enum OrderStatus { PENDING_PAYMENT CONFIRMED PROCESSING SHIPPED DELIVERED CANCELLED REFUNDED }
 
 model OrderItem {
-  id               String  @id @default(cuid())
-  orderId          String
-  order            Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId        String
-  product          Product @relation(fields: [productId], references: [id], onDelete: Restrict)
-  productName      String
-  quantity         Int
-  unitPriceMinor   Int
-  totalPriceMinor  Int
-  createdAt        DateTime @default(now())
-
+  id String @id @default(cuid())
+  orderId String
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName String
+  quantity Int
+  unitPriceMinor Int
+  totalPriceMinor Int
+  createdAt DateTime @default(now())
   @@index([orderId])
   @@index([productId])
 }
 
 model Payment {
-  id                String        @id @default(cuid())
-  orderId           String        @unique
-  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  provider          PaymentProvider
-  providerOrderId   String?
+  id String @id @default(cuid())
+  orderId String @unique
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider PaymentProvider
   providerPaymentId String?
-  status            PaymentStatus  @default(PENDING)
-  amountMinor       Int
-  currency          String         @default("INR")
-  failureCode       String?
-  failureMessage    String?
-  paidAt            DateTime?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-
-  @@unique([provider, providerOrderId])
-  @@unique([provider, providerPaymentId])
+  status PaymentStatus @default(PENDING)
+  amountMinor Int
+  currency String @default("INR")
+  paidAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([providerPaymentId])
   @@index([status])
 }
 
-enum PaymentProvider {
-  RAZORPAY
-  STRIPE
-  COD
-}
-
-enum PaymentStatus {
-  PENDING
-  AUTHORIZED
-  CAPTURED
-  FAILED
-  REFUNDED
-}
+enum PaymentProvider { RAZORPAY STRIPE COD }
+enum PaymentStatus { PENDING AUTHORIZED CAPTURED FAILED REFUNDED }
 
 model Shipment {
-  id             String         @id @default(cuid())
-  orderId        String         @unique
-  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  status         ShipmentStatus @default(PENDING)
-  carrier        String?
+  id String @id @default(cuid())
+  orderId String @unique
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status ShipmentStatus @default(PENDING)
+  carrier String?
   trackingNumber String?
-  trackingUrl    String?
-  shippedAt      DateTime?
-  deliveredAt    DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
+  trackingUrl String?
+  shippedAt DateTime?
+  deliveredAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   @@index([status])
   @@index([trackingNumber])
 }
 
-enum ShipmentStatus {
-  PENDING
-  LABEL_CREATED
-  SHIPPED
-  IN_TRANSIT
-  DELIVERED
-  EXCEPTION
+enum ShipmentStatus { PENDING LABEL_CREATED SHIPPED IN_TRANSIT DELIVERED EXCEPTION }
+
+model CustomRequest {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title String
+  requirements String
+  dimensions String?
+  preferredMaterial String?
+  preferredScale String?
+  notes String?
+  referenceFileCount Int @default(0)
+  status CustomRequestStatus @default(SUBMITTED)
+  revisionCount Int @default(0)
+  media CustomRequestMedia[]
+  preview CustomRequestPreview?
+  quote CustomRequestQuote?
+  revisions CustomRequestRevision[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+enum CustomRequestStatus { SUBMITTED UNDER_REVIEW IN_PRODUCTION PREVIEW_READY CUSTOMER_REVIEW REVISION_REQUESTED APPROVED ORDERABLE CANCELLED }
+
+model CustomRequestMedia {
+  id String @id @default(cuid())
+  customRequestId String
+  customRequest CustomRequest @relation(fields: [customRequestId], references: [id], onDelete: Cascade)
+  storageKey String
+  storageUrl String?
+  originalName String
+  mimeType String?
+  fileSize BigInt
+  createdAt DateTime @default(now())
+  @@index([customRequestId])
+}
+
+enum CustomPreviewStatus { PROCESSING READY REPLACED }
+
+model CustomRequestPreview {
+  id String @id @default(cuid())
+  customRequestId String @unique
+  customRequest CustomRequest @relation(fields: [customRequestId], references: [id], onDelete: Cascade)
+  url String
+  status CustomPreviewStatus @default(PROCESSING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CustomRequestRevision {
+  id String @id @default(cuid())
+  customRequestId String
+  customRequest CustomRequest @relation(fields: [customRequestId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy User @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+  note String
+  createdAt DateTime @default(now())
+  @@index([customRequestId, createdAt])
+}
+
+model CustomRequestQuote {
+  id String @id @default(cuid())
+  customRequestId String @unique
+  customRequest CustomRequest @relation(fields: [customRequestId], references: [id], onDelete: Cascade)
+  currency String @default("INR")
+  amountMinor Int
+  notes String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ProductFile {
@@ -367,7 +382,6 @@ model ProductFile {
   generatedByJob ProductFileProcessingJob? @relation("ProcessingJobOutput")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   @@index([productId])
   @@index([format])
   @@index([processingStatus])
@@ -388,46 +402,11 @@ model ProductFileProcessingJob {
   completedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   @@index([productFileId])
   @@index([status])
 }
 
-enum ProductFileType {
-  MODEL
-  IMAGE
-  DOCUMENT
-}
-
-enum ProductFileFormat {
-  ABC
-  USD
-  USDA
-  USDC
-  SVG
-  PDF
-  JPG
-  WEBP
-  PNG
-  OBJ
-  PLY
-  STL
-  BVH
-  FBX
-  GLB
-  GLTF
-}
-
-enum ProcessingStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-enum ProcessingJobStatus {
-  QUEUED
-  PROCESSING
-  COMPLETED
-  FAILED
-}
+enum ProductFileType { MODEL IMAGE DOCUMENT }
+enum ProductFileFormat { ABC USD USDA USDC SVG PDF JPG WEBP PNG OBJ PLY STL BVH FBX GLB GLTF }
+enum ProcessingStatus { PENDING PROCESSING COMPLETED FAILED }
+enum ProcessingJobStatus { QUEUED PROCESSING COMPLETED FAILED }
