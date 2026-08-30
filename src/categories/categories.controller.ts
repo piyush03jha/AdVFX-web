@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -18,8 +19,8 @@ export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Get()
-  findAll() {
-    return this.categoriesService.findAll();
+  findAll(@Query('includeInactive') includeInactive?: string) {
+    return this.categoriesService.findAll(includeInactive === 'true');
   }
 
   @Get(':id')
