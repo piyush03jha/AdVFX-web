@@ -12,12 +12,14 @@ import { CartModule } from "./cart/cart.module";
 import { OrdersModule } from "./orders/orders.module";
 import { ShipmentsModule } from "./shipments/shipments.module";
 import { CustomBuildModule } from "./custom-build/custom-build.module";
+import { UsersModule } from "./users/users.module";
 
 @Module({
   imports: [
     PrismaModule,
     AuthModule,
     AdminModule,
+    UsersModule,
     CategoriesModule,
     ProductsModule,
     ProductFilesModule,
