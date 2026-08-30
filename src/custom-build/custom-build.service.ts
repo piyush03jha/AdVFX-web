@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { CustomRequestStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CartService } from '../cart/cart.service';
 import { CreateCustomRequestDto } from './dto/create-custom-request.dto';
 
 const TRANSITIONS: Record<CustomRequestStatus, CustomRequestStatus[]> = {
@@ -21,7 +22,10 @@ const TRANSITIONS: Record<CustomRequestStatus, CustomRequestStatus[]> = {
 
 @Injectable()
 export class CustomBuildService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cartService: CartService,
+  ) {}
 
   async create(userId: string, dto: CreateCustomRequestDto) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
@@ -100,6 +104,9 @@ export class CustomBuildService {
   async updateStatus(id: string, status: CustomRequestStatus) {
     const request = await this.findOneAdmin(id);
     const allowed = TRANSITIONS[request.status];
+    if (status === 'CANCELLED') {
+      return this.prisma.customRequest.update({ where: { id }, data: { status: 'CANCELLED' }, include: { user: true, media: true, preview: { include: { productFile: true } }, quote: true, revisions: true, previewProduct: true } });
+    }
     if (!allowed.includes(status)) {
       throw new BadRequestException(`Cannot change custom request from ${request.status} to ${status}`);
     }
@@ -136,51 +143,39 @@ export class CustomBuildService {
     await this.findOneAdmin(customRequestId);
     const file = await this.prisma.productFile.findUnique({
       where: { id: productFileId },
-      select: { id: true, storageUrl: true, processingStatus: true },
+      select: { id: true, storageUrl: true, processingStatus: true, format: true },
     });
 
     if (!file) throw new NotFoundException('Preview file not found');
-    if (file.processingStatus !== 'COMPLETED') {
-      throw new BadRequestException('Preview file is not processed yet');
-    }
-    if (!file.storageUrl) {
-      throw new BadRequestException('Processed preview file has no storage URL');
-    }
+    if (file.processingStatus !== 'COMPLETED') throw new BadRequestException('Preview file is not processed yet');
+    if (!file.storageUrl) throw new BadRequestException('Processed preview file has no storage URL');
 
     return this.prisma.customRequestPreview.upsert({
       where: { customRequestId },
-      create: {
-        customRequestId,
-        productFileId: file.id,
-        url: file.storageUrl,
-        status: 'READY',
-      },
-      update: {
-        productFileId: file.id,
-        url: file.storageUrl,
-        status: 'READY',
-      },
+      create: { customRequestId, productFileId: file.id, url: file.storageUrl, status: 'READY' },
+      update: { productFileId: file.id, url: file.storageUrl, status: 'READY' },
     });
   }
 
   async approve(userId: string, id: string) {
     const request = await this.mineOne(userId, id);
-
     if (!['CUSTOMER_REVIEW', 'PREVIEW_READY'].includes(request.status)) {
       throw new BadRequestException('Custom model is not ready for approval');
     }
+    if (!request.preview?.url) throw new BadRequestException('A 3D preview is required before approval');
 
-    if (!request.preview?.url) {
-      throw new BadRequestException('A 3D preview is required before approval');
-    }
-
-    await this.prisma.customRequest.update({
-      where: { id },
-      data: { status: 'APPROVED' },
-    });
-
+    await this.prisma.customRequest.update({ where: { id }, data: { status: 'APPROVED' } });
     await this.makeOrderable(id);
     return this.mineOne(userId, id);
+  }
+
+  async addToCart(userId: string, id: string) {
+    const request = await this.mineOne(userId, id);
+    if (request.status !== 'ORDERABLE' || !request.previewProductId) {
+      throw new BadRequestException('This custom build is not orderable yet');
+    }
+
+    return this.cartService.addItem(userId, request.previewProductId, 1);
   }
 
   async requestRevision(userId: string, id: string, note?: string) {
@@ -192,13 +187,9 @@ export class CustomBuildService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.customRequest.update({
         where: { id },
-        data: {
-          status: 'REVISION_REQUESTED',
-          revisionCount: { increment: 1 },
-        },
+        data: { status: 'REVISION_REQUESTED', revisionCount: { increment: 1 } },
         include: { media: true, preview: true, quote: true },
       });
-
       if (note?.trim()) {
         await tx.customRequestRevision.create({
           data: { customRequestId: id, requestedById: userId, note: note.trim() },
@@ -209,10 +200,7 @@ export class CustomBuildService {
   }
 
   async ensurePreviewProduct(id: string) {
-    const request = await this.prisma.customRequest.findUnique({
-      where: { id },
-      select: { previewProductId: true },
-    });
+    const request = await this.prisma.customRequest.findUnique({ where: { id }, select: { previewProductId: true } });
     if (request?.previewProductId) return request.previewProductId;
 
     const product = await this.prisma.product.create({
@@ -225,10 +213,7 @@ export class CustomBuildService {
       select: { id: true },
     });
 
-    await this.prisma.customRequest.update({
-      where: { id },
-      data: { previewProductId: product.id },
-    });
+    await this.prisma.customRequest.update({ where: { id }, data: { previewProductId: product.id } });
     return product.id;
   }
 
@@ -238,9 +223,7 @@ export class CustomBuildService {
       include: { preview: true, quote: true },
     });
 
-    if (!request || request.status !== 'APPROVED' || !request.preview || !request.quote) {
-      return;
-    }
+    if (!request || request.status !== 'APPROVED' || !request.preview || !request.quote) return;
 
     const previewProductId = request.previewProductId ?? await this.ensurePreviewProduct(id);
 
@@ -257,39 +240,28 @@ export class CustomBuildService {
         },
       });
 
-      await tx.productPrice.updateMany({
-        where: { productId: previewProductId, isActive: true },
-        data: { isActive: false },
-      });
-
+      await tx.productPrice.updateMany({ where: { productId: previewProductId, isActive: true }, data: { isActive: false } });
       await tx.productPrice.create({
         data: {
           productId: previewProductId,
-          currency: request.quote!.currency,
-          amountMinor: request.quote!.amountMinor,
+          currency: request.quote.currency,
+          amountMinor: request.quote.amountMinor,
           isActive: true,
         },
       });
 
-      await tx.productMedia.updateMany({
-        where: { productId: previewProductId, type: 'MODEL_PREVIEW', isPrimary: true },
-        data: { isPrimary: false },
-      });
-
+      await tx.productMedia.updateMany({ where: { productId: previewProductId, type: 'MODEL_PREVIEW', isPrimary: true }, data: { isPrimary: false } });
       await tx.productMedia.create({
         data: {
           productId: previewProductId,
           type: 'MODEL_PREVIEW',
-          url: request.preview!.url,
+          url: request.preview.url,
           isPrimary: true,
           sortOrder: 0,
         },
       });
 
-      await tx.customRequest.update({
-        where: { id },
-        data: { status: 'ORDERABLE', previewProductId },
-      });
+      await tx.customRequest.update({ where: { id }, data: { status: 'ORDERABLE', previewProductId } });
     });
   }
 }
