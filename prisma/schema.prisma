@@ -6,12 +6,6 @@ datasource db {
   provider = "postgresql"
 }
 
-/**
- * ============================================================
- * USERS / ADMIN
- * ============================================================
- */
-
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -24,6 +18,10 @@ model User {
 
   createdProducts Product[] @relation("ProductCreatedBy")
   updatedProducts Product[] @relation("ProductUpdatedBy")
+
+  addresses Address[]
+  cart      Cart?
+  orders    Order[]
 }
 
 enum UserRole {
@@ -31,11 +29,26 @@ enum UserRole {
   ADMIN
 }
 
-/**
- * ============================================================
- * CATALOG
- * ============================================================
- */
+model Address {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName   String
+  phone      String
+  line1      String
+  line2      String?
+  city       String
+  state      String
+  postalCode String
+  country    String   @default("IN")
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([userId])
+}
 
 model Category {
   id          String   @id @default(cuid())
@@ -54,46 +67,37 @@ model Category {
 }
 
 model Product {
-  id          String  @id @default(cuid())
-  name        String
-  slug        String  @unique
-  description String?
-
-  categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-
-  status ProductStatus @default(DRAFT)
-
-  /** Merchandising flags used by storefront queries. */
-  isFeatured  Boolean @default(false)
-  isTrending  Boolean @default(false)
-  isBestseller Boolean @default(false)
-  badge       String?
-
-  /** Physical product specifications. */
-  material    String?
-  scale       String?
-  dimensions  String?
-  height      String?
-  base        String?
-  packaging   String?
-  weight      String?
-
-  /** Product quantity currently available for sale. */
-  inventory ProductInventory?
-
-  prices ProductPrice[]
-  media  ProductMedia[]
-  files  ProductFile[]
-  tags   ProductTag[]
-
-  createdById String?
-  createdBy   User? @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedById String?
-  updatedBy   User? @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String        @id @default(cuid())
+  name           String
+  slug           String        @unique
+  description    String?
+  categoryId     String?
+  category       Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  status         ProductStatus @default(DRAFT)
+  isFeatured     Boolean       @default(false)
+  isTrending     Boolean       @default(false)
+  isBestseller   Boolean       @default(false)
+  badge          String?
+  material       String?
+  scale          String?
+  dimensions     String?
+  height         String?
+  base           String?
+  packaging      String?
+  weight         String?
+  inventory      ProductInventory?
+  prices         ProductPrice[]
+  media          ProductMedia[]
+  files          ProductFile[]
+  tags           ProductTag[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  createdById    String?
+  createdBy      User?         @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById    String?
+  updatedBy      User?         @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([categoryId])
   @@index([status])
@@ -109,51 +113,45 @@ enum ProductStatus {
 }
 
 model ProductPrice {
-  id        String   @id @default(cuid())
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  currency      String  @default("INR")
-  amountMinor   Int
+  id             String   @id @default(cuid())
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  currency       String   @default("INR")
+  amountMinor    Int
   compareAtMinor Int?
-  isActive      Boolean  @default(true)
-  startsAt      DateTime?
-  endsAt        DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive       Boolean  @default(true)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([productId, isActive])
   @@index([currency])
 }
 
 model ProductInventory {
-  id        String  @id @default(cuid())
-  productId String  @unique
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  stock        Int @default(0)
-  lowStockAt   Int @default(5)
-  trackStock   Boolean @default(true)
-  allowBackorder Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  productId      String   @unique
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stock          Int      @default(0)
+  lowStockAt     Int      @default(5)
+  trackStock     Boolean  @default(true)
+  allowBackorder Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model ProductMedia {
-  id        String  @id @default(cuid())
-  productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  type      ProductMediaType
-  url       String
-  altText   String?
-  sortOrder Int      @default(0)
-  isPrimary Boolean  @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String           @id @default(cuid())
+  productId  String
+  product    Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type       ProductMediaType
+  url        String
+  altText    String?
+  sortOrder  Int              @default(0)
+  isPrimary  Boolean          @default(false)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 
   @@index([productId, type, sortOrder])
 }
@@ -168,58 +166,173 @@ model Tag {
   name      String       @unique
   slug      String       @unique
   createdAt DateTime     @default(now())
-
-  products ProductTag[]
+  products  ProductTag[]
 }
 
 model ProductTag {
   productId String
   tagId     String
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([productId, tagId])
   @@index([tagId])
 }
 
-/**
- * ============================================================
- * PRODUCT FILES / 3D ASSET PROCESSING
- * ============================================================
- */
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String  @id @default(cuid())
+  cartId    String
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+  @@index([productId])
+}
+
+model Order {
+  id                 String        @id @default(cuid())
+  orderNumber        String        @unique
+  userId             String?
+  user               User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status             OrderStatus   @default(PENDING_PAYMENT)
+  currency           String        @default("INR")
+  subtotalMinor     Int
+  discountMinor     Int            @default(0)
+  shippingMinor     Int            @default(0)
+  taxMinor           Int            @default(0)
+  totalMinor         Int
+  shippingAddressId String?
+  shippingAddress    Address?      @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
+  items              OrderItem[]
+  payment            Payment?
+  shipment           Shipment?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model OrderItem {
+  id               String  @id @default(cuid())
+  orderId          String
+  order            Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName      String
+  quantity         Int
+  unitPriceMinor   Int
+  totalPriceMinor  Int
+  createdAt        DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider          PaymentProvider
+  providerPaymentId String?
+  status            PaymentStatus  @default(PENDING)
+  amountMinor       Int
+  currency          String         @default("INR")
+  paidAt            DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([providerPaymentId])
+  @@index([status])
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  STRIPE
+  COD
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+model Shipment {
+  id                String         @id @default(cuid())
+  orderId           String         @unique
+  order             Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status            ShipmentStatus  @default(PENDING)
+  carrier           String?
+  trackingNumber    String?
+  trackingUrl       String?
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([status])
+  @@index([trackingNumber])
+}
+
+enum ShipmentStatus {
+  PENDING
+  LABEL_CREATED
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  EXCEPTION
+}
 
 model ProductFile {
   id String @id @default(cuid())
-
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   originalName String
-  storageKey   String
-  storageUrl   String?
-
-  format   ProductFileFormat
+  storageKey String
+  storageUrl String?
+  format ProductFileFormat
   fileType ProductFileType
   mimeType String?
   fileSize BigInt
-
   processingStatus ProcessingStatus @default(PENDING)
-  processingError  String?
-
-  imageWidth      Int?
-  imageHeight     Int?
-  imageChannels   Int?
-  imageHasAlpha   Boolean?
+  processingError String?
+  imageWidth Int?
+  imageHeight Int?
+  imageChannels Int?
+  imageHasAlpha Boolean?
   imageColorSpace String?
-
   convertedFromId String?
-  convertedFrom   ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
-  convertedFiles  ProductFile[] @relation("ConvertedFiles")
-
+  convertedFrom ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
+  convertedFiles ProductFile[] @relation("ConvertedFiles")
   processingJobs ProductFileProcessingJob[]
   generatedByJob ProductFileProcessingJob? @relation("ProcessingJobOutput")
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -231,22 +344,18 @@ model ProductFile {
 
 model ProductFileProcessingJob {
   id String @id @default(cuid())
-
   productFileId String
-  productFile   ProductFile @relation(fields: [productFileId], references: [id], onDelete: Cascade)
-
-  status       ProcessingJobStatus @default(QUEUED)
-  attempts     Int @default(0)
-  maxAttempts  Int @default(3)
+  productFile ProductFile @relation(fields: [productFileId], references: [id], onDelete: Cascade)
+  status ProcessingJobStatus @default(QUEUED)
+  attempts Int @default(0)
+  maxAttempts Int @default(3)
   errorMessage String?
-
   outputFileId String? @unique
-  outputFile   ProductFile? @relation("ProcessingJobOutput", fields: [outputFileId], references: [id], onDelete: SetNull)
-
-  startedAt   DateTime?
+  outputFile ProductFile? @relation("ProcessingJobOutput", fields: [outputFileId], references: [id], onDelete: SetNull)
+  startedAt DateTime?
   completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([productFileId])
   @@index([status])
