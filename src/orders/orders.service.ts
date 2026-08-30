@@ -1,6 +1,17 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { OrderStatus, Prisma } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
+
+const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['PROCESSING', 'CANCELLED', 'REFUNDED'],
+  PROCESSING: ['SHIPPED', 'CANCELLED'],
+  SHIPPED: ['DELIVERED'],
+  DELIVERED: ['REFUNDED'],
+  CANCELLED: [],
+  REFUNDED: [],
+};
 
 @Injectable()
 export class OrdersService {
@@ -41,7 +52,7 @@ export class OrdersService {
       }
 
       let subtotalMinor = 0;
-      const orderItems = [];
+      const orderItems: Prisma.OrderItemCreateWithoutOrderInput[] = [];
 
       for (const item of cart.items) {
         const product = item.product;
@@ -63,7 +74,7 @@ export class OrdersService {
         subtotalMinor += lineTotal;
 
         orderItems.push({
-          productId: product.id,
+          product: { connect: { id: product.id } },
           productName: product.name,
           quantity: item.quantity,
           unitPriceMinor: price.amountMinor,
@@ -74,15 +85,15 @@ export class OrdersService {
       const order = await tx.order.create({
         data: {
           orderNumber: this.generateOrderNumber(),
-          userId,
+          user: { connect: { id: userId } },
           status: 'PENDING_PAYMENT',
-          currency: orderItems.length > 0 ? cart.items[0].product.prices[0].currency : 'INR',
+          currency: cart.items[0].product.prices[0].currency,
           subtotalMinor,
           discountMinor: 0,
           shippingMinor: 0,
           taxMinor: 0,
           totalMinor: subtotalMinor,
-          shippingAddressId: address.id,
+          shippingAddress: { connect: { id: address.id } },
           items: { create: orderItems },
         },
         include: { items: true, shippingAddress: true },
@@ -90,10 +101,17 @@ export class OrdersService {
 
       for (const item of cart.items) {
         if (item.product.inventory?.trackStock && !item.product.inventory.allowBackorder) {
-          await tx.productInventory.update({
-            where: { productId: item.product.id },
+          const result = await tx.productInventory.updateMany({
+            where: {
+              productId: item.product.id,
+              stock: { gte: item.quantity },
+            },
             data: { stock: { decrement: item.quantity } },
           });
+
+          if (result.count !== 1) {
+            throw new BadRequestException(`Stock changed for "${item.product.name}"; please try again`);
+          }
         }
       }
 
@@ -119,6 +137,63 @@ export class OrdersService {
 
     if (!order) throw new NotFoundException('Order not found');
     return order;
+  }
+
+  async findAllAdmin(status?: OrderStatus) {
+    return this.prisma.order.findMany({
+      where: status ? { status } : undefined,
+      include: { items: true, shippingAddress: true, payment: true, shipment: true, user: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findOneAdmin(id: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { items: true, shippingAddress: true, payment: true, shipment: true, user: true },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+    return order;
+  }
+
+  async updateStatus(id: string, status: OrderStatus) {
+    const order = await this.findOneAdmin(id);
+    const allowed = ORDER_TRANSITIONS[order.status];
+
+    if (!allowed.includes(status)) {
+      throw new BadRequestException(
+        `Cannot change order from ${order.status} to ${status}`,
+      );
+    }
+
+    return this.prisma.order.update({
+      where: { id },
+      data: {
+        status,
+        ...(status === 'SHIPPED'
+          ? {
+              shipment: {
+                upsert: {
+                  create: { status: 'SHIPPED', shippedAt: new Date() },
+                  update: { status: 'SHIPPED', shippedAt: new Date() },
+                },
+              },
+            }
+          : {}),
+        ...(status === 'DELIVERED'
+          ? {
+              shipment: {
+                upsert: {
+                  create: { status: 'DELIVERED', deliveredAt: new Date() },
+                  update: { status: 'DELIVERED', deliveredAt: new Date() },
+                },
+              },
+            }
+          : {}),
+      },
+      include: { items: true, shippingAddress: true, payment: true, shipment: true, user: true },
+    });
   }
 
   private generateOrderNumber() {
