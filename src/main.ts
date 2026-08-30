@@ -8,6 +8,13 @@ import {
   NestFastifyApplication,
 } from "@nestjs/platform-fastify";
 
+interface RateLimitState {
+  startedAt: number;
+  count: number;
+}
+
+const rateLimitState = new Map<string, RateLimitState>();
+
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
@@ -19,6 +26,11 @@ async function bootstrap() {
   const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE ?? 50);
   if (!Number.isFinite(maxUploadSizeMb) || maxUploadSizeMb <= 0 || maxUploadSizeMb > 1024) {
     throw new Error("MAX_UPLOAD_SIZE must be a positive value up to 1024 MB");
+  }
+
+  const rateLimitPerMinute = Number(process.env.API_RATE_LIMIT_PER_MINUTE ?? 120);
+  if (!Number.isFinite(rateLimitPerMinute) || rateLimitPerMinute <= 0) {
+    throw new Error("API_RATE_LIMIT_PER_MINUTE must be a positive number");
   }
 
   await app.register(multipart, {
@@ -49,38 +61,38 @@ async function bootstrap() {
     .getHttpAdapter()
     .getInstance()
     .addHook("onRequest", async (request, reply) => {
-      const configuredLimit = Number(process.env.API_RATE_LIMIT_PER_MINUTE ?? 120);
-      const limit = Number.isFinite(configuredLimit) && configuredLimit > 0 ? configuredLimit : 120;
       const now = Date.now();
-      const windowStart = Number(request.headers["x-rate-limit-window-start"] ?? 0);
-      const requestCount = Number(request.headers["x-rate-limit-count"] ?? 0);
-
-      // This lightweight process-local limiter is intentionally scoped to the current
-      // application instance. A distributed limiter should replace it when Redis is added.
       const key = request.ip;
-      const state = app.getHttpAdapter().getInstance().__rateLimitState ?? new Map();
-      app.getHttpAdapter().getInstance().__rateLimitState = state;
-      const current = state.get(key);
-      const next = !current || now - current.startedAt >= 60_000
-        ? { startedAt: now, count: 1 }
-        : { startedAt: current.startedAt, count: current.count + 1 };
-      state.set(key, next);
+      const current = rateLimitState.get(key);
+      const next: RateLimitState =
+        !current || now - current.startedAt >= 60_000
+          ? { startedAt: now, count: 1 }
+          : { startedAt: current.startedAt, count: current.count + 1 };
 
-      reply.header("X-RateLimit-Limit", limit);
-      reply.header("X-RateLimit-Remaining", Math.max(0, limit - next.count));
+      rateLimitState.set(key, next);
 
-      if (next.count > limit) {
-        reply.code(429).header("Retry-After", "60").send({ message: "Too many requests" });
+      // Bound memory for long-running processes.
+      if (rateLimitState.size > 10_000) {
+        const cutoff = now - 60_000;
+        for (const [stateKey, state] of rateLimitState) {
+          if (state.startedAt < cutoff) rateLimitState.delete(stateKey);
+        }
       }
 
-      void windowStart;
-      void requestCount;
+      reply.header("X-RateLimit-Limit", rateLimitPerMinute);
+      reply.header(
+        "X-RateLimit-Remaining",
+        Math.max(0, rateLimitPerMinute - next.count),
+      );
+
+      if (next.count > rateLimitPerMinute) {
+        reply
+          .code(429)
+          .header("Retry-After", "60")
+          .send({ message: "Too many requests" });
+      }
     });
 
-  /**
-   * Prisma returns BigInt values as JavaScript bigint.
-   * Fastify's JSON serializer cannot serialize bigint.
-   */
   app
     .getHttpAdapter()
     .getInstance()
