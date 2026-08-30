@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   Patch,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -16,6 +17,7 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { CreateReturnRequestDto } from './dto/create-return-request.dto';
 import { ReturnsService } from './returns.service';
 import { OrdersService } from './orders.service';
+import { OrderStatus } from '@prisma/client';
 
 @UseGuards(AuthGuard)
 @Controller('orders')
@@ -60,8 +62,11 @@ export class OrdersController {
 
   @UseGuards(AdminGuard)
   @Get('admin/list')
-  findAllAdmin(@Req() req: any, @Body() _body: AdminOrderListDto) {
-    return this.ordersService.findAllAdmin(_body.status);
+  findAllAdmin(@Query('status') status?: OrderStatus) {
+    if (status && !Object.values(OrderStatus).includes(status)) {
+      throw new Error(`Invalid order status: ${status}`);
+    }
+    return this.ordersService.findAllAdmin(status);
   }
 
   @UseGuards(AdminGuard)
