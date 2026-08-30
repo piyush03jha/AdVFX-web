@@ -97,7 +97,10 @@ async function request<T>(path: string, options: RequestOptions = {}) {
 
   if (!response.ok) {
     const message =
-      typeof body?.message === "string" ? body.message : "Request failed";
+      typeof body?.message === "string"
+        ? body.message
+        : "Request failed";
+
     throw new Error(message);
   }
 
@@ -189,6 +192,71 @@ export function removeProductMedia(token: string, id: string, mediaId: string) {
   });
 }
 
+export interface AdminProductFile {
+  id: string;
+  productId: string;
+  originalName: string;
+  storageKey: string;
+  storageUrl: string | null;
+  format: string;
+  fileType: "MODEL" | "IMAGE" | "DOCUMENT";
+  mimeType: string | null;
+  fileSize: number;
+  processingStatus: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  processingError: string | null;
+}
+
+export async function uploadProductFile(
+  token: string,
+  productId: string,
+  file: File,
+) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${API_BASE_URL}/products/${productId}/files`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+      cache: "no-store",
+    },
+  );
+
+  const body = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      typeof body?.message === "string"
+        ? body.message
+        : "File upload failed";
+    throw new Error(message);
+  }
+
+  return body as AdminProductFile;
+}
+
+export function getProductFiles(token: string, productId: string) {
+  return request<AdminProductFile[]>(`/products/${productId}/files`, { token });
+}
+
+export function deleteProductFile(
+  token: string,
+  productId: string,
+  fileId: string,
+) {
+  return request<{ message: string }>(
+    `/products/${productId}/files/${fileId}`,
+    {
+      method: "DELETE",
+      token,
+    },
+  );
+}
+
 export function getCategories(token: string) {
   return request<AdminCategory[]>("/categories?includeInactive=true", { token });
 }
@@ -217,5 +285,5 @@ export function deleteCategory(token: string, id: string) {
   return request<{ message: string }>(`/categories/${id}`, {
     method: "DELETE",
     token,
-  });
+    });
 }
