@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -49,6 +49,7 @@ export default function AdminCustomRequestsPage() {
   const [selected, setSelected] = useState<CustomRequest | null>(null);
   const [statusFilter, setStatusFilter] = useState<"ALL" | RequestStatus>("ALL");
   const [previewUrl, setPreviewUrl] = useState("");
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +147,45 @@ export default function AdminCustomRequestsPage() {
     }
   }
 
+  async function uploadPreview() {
+    if (!selected || !previewFile) return;
+    const token = window.localStorage.getItem("admin_access_token");
+    if (!token) return;
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", previewFile);
+
+      const response = await fetch(
+        `${API_BASE_URL}/custom-requests/${selected.id}/files/preview`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+          cache: "no-store",
+        },
+      );
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(typeof body?.message === "string" ? body.message : "Unable to upload 3D preview");
+      }
+      setPreviewFile(null);
+      setNotice("3D preview uploaded and queued for processing.");
+      await load();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unable to upload 3D preview");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handlePreviewFile(event: ChangeEvent<HTMLInputElement>) {
+    setPreviewFile(event.target.files?.[0] ?? null);
+  }
+
   return (
     <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-8 sm:py-8 lg:px-12">
       <div className="mx-auto max-w-[1500px]">
@@ -173,7 +213,7 @@ export default function AdminCustomRequestsPage() {
             ) : (
               <div className="divide-y divide-white/[0.06]">
                 {filtered.map((request) => (
-                  <button key={request.id} type="button" onClick={() => { setSelected(request); setPreviewUrl(request.preview?.url ?? ""); setError(null); setNotice(null); }} className={`grid w-full gap-3 px-5 py-5 text-left hover:bg-white/[0.03] sm:grid-cols-[1.6fr_1fr_1fr_1fr] ${selected?.id === request.id ? "bg-white/[0.04]" : ""}`}>
+                  <button key={request.id} type="button" onClick={() => { setSelected(request); setPreviewUrl(request.preview?.url ?? ""); setPreviewFile(null); setError(null); setNotice(null); }} className={`grid w-full gap-3 px-5 py-5 text-left hover:bg-white/[0.03] sm:grid-cols-[1.6fr_1fr_1fr_1fr] ${selected?.id === request.id ? "bg-white/[0.04]" : ""}`}>
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium">{request.title}</span>
                       <span className="mt-1 block truncate text-xs text-muted">{request.user?.email ?? "Unknown customer"}</span>
@@ -220,9 +260,14 @@ export default function AdminCustomRequestsPage() {
 
                 <section>
                   <p className="text-[10px] uppercase tracking-[0.14em] text-primary">3D preview</p>
-                  <input value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} placeholder="Preview URL" className="mt-3 min-h-11 w-full rounded-xl border border-white/[0.08] bg-black/10 px-3 text-sm outline-none focus:border-primary/50" />
-                  <button type="button" onClick={setPreview} disabled={busy || !previewUrl.trim()} className="mt-3 min-h-10 rounded-full bg-primary px-4 text-xs font-medium text-white disabled:opacity-50">Save preview</button>
-                  {selected.preview?.url && <p className="mt-2 text-[11px] text-muted">Preview is currently configured and can be shown to the customer.</p>}
+                  <input type="file" accept=".glb,.gltf,model/gltf-binary,model/gltf+json" onChange={handlePreviewFile} className="mt-3 block w-full text-xs text-muted file:mr-3 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-medium file:text-white" />
+                  {previewFile && <p className="mt-2 text-[11px] text-muted">Selected: {previewFile.name}</p>}
+                  <button type="button" onClick={uploadPreview} disabled={busy || !previewFile} className="mt-3 min-h-10 rounded-full bg-primary px-4 text-xs font-medium text-white disabled:opacity-50">Upload 3D preview</button>
+                  <div className="mt-4 border-t border-white/[0.06] pt-4">
+                    <p className="text-[11px] text-muted">Existing processed preview URL</p>
+                    <input value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} placeholder="Preview URL" className="mt-2 min-h-11 w-full rounded-xl border border-white/[0.08] bg-black/10 px-3 text-sm outline-none focus:border-primary/50" />
+                    <button type="button" onClick={setPreview} disabled={busy || !previewUrl.trim()} className="mt-3 min-h-10 rounded-full border border-white/[0.08] px-4 text-xs font-medium disabled:opacity-50">Save preview URL</button>
+                  </div>
                 </section>
 
                 <section>
