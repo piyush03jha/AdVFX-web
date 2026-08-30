@@ -86,6 +86,7 @@ model Product {
   packaging      String?
   weight         String?
   inventory      ProductInventory?
+  inventoryReservations InventoryReservation[]
   prices         ProductPrice[]
   media          ProductMedia[]
   files          ProductFile[]
@@ -134,11 +135,37 @@ model ProductInventory {
   productId      String   @unique
   product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   stock          Int      @default(0)
+  reserved       Int      @default(0)
   lowStockAt     Int      @default(5)
   trackStock     Boolean  @default(true)
   allowBackorder Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model InventoryReservation {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  quantity   Int
+  status     InventoryReservationStatus @default(ACTIVE)
+  expiresAt  DateTime
+  releasedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([orderId, productId])
+  @@index([productId, status])
+  @@index([expiresAt, status])
+}
+
+enum InventoryReservationStatus {
+  ACTIVE
+  CONSUMED
+  RELEASED
+  EXPIRED
 }
 
 model ProductMedia {
@@ -185,7 +212,7 @@ model Cart {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   items     CartItem[]
   createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  updatedAt DateTime @updatedAt
 }
 
 model CartItem {
@@ -217,6 +244,7 @@ model Order {
   shippingAddressId String?
   shippingAddress    Address?      @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
   items              OrderItem[]
+  inventoryReservations InventoryReservation[]
   payment            Payment?
   shipment           Shipment?
   createdAt          DateTime      @default(now())
@@ -258,15 +286,19 @@ model Payment {
   orderId           String        @unique
   order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   provider          PaymentProvider
+  providerOrderId   String?
   providerPaymentId String?
   status            PaymentStatus  @default(PENDING)
   amountMinor       Int
   currency          String         @default("INR")
+  failureCode       String?
+  failureMessage    String?
   paidAt            DateTime?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
-  @@index([providerPaymentId])
+  @@unique([provider, providerOrderId])
+  @@unique([provider, providerPaymentId])
   @@index([status])
 }
 
@@ -285,17 +317,17 @@ enum PaymentStatus {
 }
 
 model Shipment {
-  id                String         @id @default(cuid())
-  orderId           String         @unique
-  order             Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  status            ShipmentStatus  @default(PENDING)
-  carrier           String?
-  trackingNumber    String?
-  trackingUrl       String?
-  shippedAt         DateTime?
-  deliveredAt       DateTime?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id             String         @id @default(cuid())
+  orderId        String         @unique
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status         ShipmentStatus @default(PENDING)
+  carrier        String?
+  trackingNumber String?
+  trackingUrl    String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@index([status])
   @@index([trackingNumber])
