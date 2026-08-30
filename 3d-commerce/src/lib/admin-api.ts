@@ -52,6 +52,7 @@ export interface AdminProduct {
   category: AdminCategory | null;
   inventory: {
     stock: number;
+    reserved: number;
     lowStockAt: number;
     trackStock: boolean;
     allowBackorder: boolean;
@@ -96,10 +97,7 @@ async function request<T>(path: string, options: RequestOptions = {}) {
 
   if (!response.ok) {
     const message =
-      typeof body?.message === "string"
-        ? body.message
-        : "Request failed";
-
+      typeof body?.message === "string" ? body.message : "Request failed";
     throw new Error(message);
   }
 
@@ -143,6 +141,49 @@ export function updateProduct(
 
 export function archiveProduct(token: string, id: string) {
   return request<{ message: string }>(`/products/${id}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function setProductPrice(
+  token: string,
+  id: string,
+  data: Record<string, unknown>,
+) {
+  return request<AdminProduct>(`/products/${id}/pricing`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateProductInventory(
+  token: string,
+  id: string,
+  data: Record<string, unknown>,
+) {
+  return request<AdminProduct>(`/products/${id}/inventory`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(data),
+  });
+}
+
+export function addProductMedia(
+  token: string,
+  id: string,
+  data: Record<string, unknown>,
+) {
+  return request<AdminProduct>(`/products/${id}/media`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(data),
+  });
+}
+
+export function removeProductMedia(token: string, id: string, mediaId: string) {
+  return request<AdminProduct>(`/products/${id}/media/${mediaId}`, {
     method: "DELETE",
     token,
   });
