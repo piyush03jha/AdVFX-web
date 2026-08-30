@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckoutQuoteDto } from './dto/checkout-quote.dto';
+import { ShippingService } from '../shipping/shipping.service';
 
 @Injectable()
 export class CheckoutService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly shipping: ShippingService,
+  ) {}
 
   async getQuote(userId: string, dto: CheckoutQuoteDto) {
     const cart = await this.prisma.cart.findUnique({
@@ -41,6 +45,7 @@ export class CheckoutService {
     if (!address) throw new NotFoundException('Shipping address not found');
 
     let subtotalMinor = 0;
+    let weightGrams = 0;
     const items = cart.items.map((item) => {
       const product = item.product;
       const price = product.prices[0];
@@ -63,6 +68,7 @@ export class CheckoutService {
 
       const lineTotalMinor = price.amountMinor * item.quantity;
       subtotalMinor += lineTotalMinor;
+      weightGrams += parseWeightGrams(product.weight) * item.quantity;
 
       return {
         productId: product.id,
@@ -71,14 +77,21 @@ export class CheckoutService {
         unitPriceMinor: price.amountMinor,
         lineTotalMinor,
         currency: price.currency,
-        imageUrl: product.media.find((media) => media.isPrimary && media.type === 'IMAGE')?.url
-          ?? product.media.find((media) => media.type === 'IMAGE')?.url
-          ?? null,
+        imageUrl:
+          product.media.find((media) => media.isPrimary && media.type === 'IMAGE')?.url ??
+          product.media.find((media) => media.type === 'IMAGE')?.url ??
+          null,
       };
     });
 
     const currency = items[0]?.currency ?? 'INR';
-    const shippingMinor = 0;
+    const shippingQuote = await this.shipping.quote({
+      subtotalMinor,
+      weightGrams,
+      country: address.country,
+      state: address.state,
+    });
+    const shippingMinor = shippingQuote.amountMinor;
     const taxMinor = 0;
     const discountMinor = 0;
     const totalMinor = subtotalMinor + shippingMinor + taxMinor - discountMinor;
@@ -87,6 +100,7 @@ export class CheckoutService {
       currency,
       items,
       shippingAddress: address,
+      shipping: shippingQuote,
       summary: {
         subtotalMinor,
         shippingMinor,
@@ -120,4 +134,16 @@ export class CheckoutService {
       currency: order.currency,
     };
   }
+}
+
+function parseWeightGrams(value: string | null): number {
+  if (!value) return 0;
+  const normalized = value.trim().toLowerCase().replace(/,/g, '');
+  const match = normalized.match(/([0-9]+(?:\.[0-9]+)?)\s*(kg|g)?/i);
+  if (!match) return 0;
+
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount)) return 0;
+
+  return match[2] === 'kg' ? amount * 1000 : amount;
 }
