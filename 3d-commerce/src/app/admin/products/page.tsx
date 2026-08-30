@@ -6,14 +6,18 @@ import {
   addProductMedia,
   archiveProduct,
   createProduct,
+  deleteProductFile,
   getCategories,
+  getProductFiles,
   getProducts,
   removeProductMedia,
   setProductPrice,
   updateProduct,
   updateProductInventory,
+  uploadProductFile,
   type AdminCategory,
   type AdminProduct,
+  type AdminProductFile,
 } from "@/lib/admin-api";
 
 const emptyForm = {
@@ -43,14 +47,19 @@ const emptyForm = {
 
 type ProductForm = typeof emptyForm;
 
+const IMAGE_ACCEPT = ".jpg,.jpeg,.png,.webp";
+const MODEL_ACCEPT = ".glb,.gltf,.fbx,.obj,.ply,.stl,.usd,.usda,.usdz,.abc,.bvh";
+
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<AdminProduct | null>(null);
+  const [files, setFiles] = useState<AdminProductFile[]>([]);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<"image" | "model" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -89,12 +98,13 @@ export default function AdminProductsPage() {
 
   const openCreate = () => {
     setSelected(null);
+    setFiles([]);
     setForm(emptyForm);
     setError(null);
     setNotice(null);
   };
 
-  const openEdit = (product: AdminProduct) => {
+  const openEdit = async (product: AdminProduct) => {
     const currentPrice = product.prices.find((price) => price.isActive);
     const primaryImage = product.media.find(
       (media) => media.type === "IMAGE" && media.isPrimary,
@@ -132,6 +142,14 @@ export default function AdminProductsPage() {
     });
     setError(null);
     setNotice(null);
+
+    if (token) {
+      try {
+        setFiles(await getProductFiles(token, product.id));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Unable to load product assets");
+      }
+    }
   };
 
   const updateField = <K extends keyof ProductForm>(
@@ -195,6 +213,45 @@ export default function AdminProductsPage() {
     return latest;
   };
 
+  const handleFileUpload = async (file: File, kind: "image" | "model") => {
+    if (!token || !selected) {
+      setError("Save the product first, then upload assets.");
+      return;
+    }
+
+    setUploading(kind);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const uploaded = await uploadProductFile(token, selected.id, file);
+      const nextFiles = [uploaded, ...files.filter((item) => item.id !== uploaded.id)];
+      setFiles(nextFiles);
+
+      if (kind === "image") {
+        const imageUrl = uploaded.storageUrl ?? `/products/${selected.id}/files/${uploaded.id}`;
+        setForm((current) => ({ ...current, imageUrl }));
+        const updated = await addProductMedia(token, selected.id, {
+          type: "IMAGE",
+          url: imageUrl,
+          isPrimary: true,
+          sortOrder: 0,
+        });
+        refreshProduct(updated);
+      } else {
+        setNotice("3D model uploaded. Processing has been queued.");
+      }
+
+      if (kind === "image") {
+        setNotice("Product image uploaded.");
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(null);
+    }
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!token) return;
@@ -250,11 +307,10 @@ export default function AdminProductsPage() {
         });
       }
 
+      const currentPrice = saved.prices.find((price) => price.isActive);
       if (
-        amountMinor !==
-        (saved.prices.find((price) => price.isActive)?.amountMinor ?? null)
-        || compareAtMinor !==
-        (saved.prices.find((price) => price.isActive)?.compareAtMinor ?? null)
+        amountMinor !== (currentPrice?.amountMinor ?? null) ||
+        compareAtMinor !== (currentPrice?.compareAtMinor ?? null)
       ) {
         saved = await setProductPrice(token, saved.id, {
           currency: "INR",
@@ -296,6 +352,19 @@ export default function AdminProductsPage() {
     }
   };
 
+  const handleDeleteFile = async (file: AdminProductFile) => {
+    if (!token || !selected) return;
+    if (!window.confirm(`Delete ${file.originalName}?`)) return;
+
+    try {
+      await deleteProductFile(token, selected.id, file.id);
+      setFiles((current) => current.filter((item) => item.id !== file.id));
+      setNotice("Asset deleted.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unable to delete asset");
+    }
+  };
+
   return (
     <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-8 sm:py-8 lg:px-12">
       <div className="mx-auto max-w-[1500px]">
@@ -304,7 +373,7 @@ export default function AdminProductsPage() {
             <p className="text-[10px] uppercase tracking-[0.2em] text-primary">Catalog</p>
             <h1 className="mt-2 font-serif text-3xl tracking-[-0.03em] sm:text-4xl">Products</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted">
-              Manage physical products, pricing, inventory, images and 3D previews.
+              Manage physical products, pricing, inventory, images and interactive 3D previews.
             </p>
           </div>
           <button
@@ -331,7 +400,7 @@ export default function AdminProductsPage() {
         {error && <p className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/[0.05] px-4 py-3 text-sm text-red-200">{error}</p>}
         {notice && <p className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.05] px-4 py-3 text-sm text-emerald-200">{notice}</p>}
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(420px,520px)]">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(420px,540px)]">
           <section className="overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.02]">
             <div className="hidden grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 border-b border-white/[0.08] px-5 py-4 text-[10px] uppercase tracking-[0.16em] text-muted sm:grid">
               <span>Product</span>
@@ -353,7 +422,7 @@ export default function AdminProductsPage() {
                     <button
                       key={product.id}
                       type="button"
-                      onClick={() => openEdit(product)}
+                      onClick={() => void openEdit(product)}
                       className={`grid w-full gap-3 px-5 py-5 text-left transition-colors hover:bg-white/[0.03] sm:grid-cols-[2fr_1fr_1fr_1fr_auto] sm:items-center sm:gap-4 ${selected?.id === product.id ? "bg-white/[0.04]" : ""}`}
                     >
                       <span className="min-w-0">
@@ -395,7 +464,7 @@ export default function AdminProductsPage() {
               {selected && (
                 <button
                   type="button"
-                  onClick={() => handleArchive(selected)}
+                  onClick={() => void handleArchive(selected)}
                   disabled={selected.status === "ARCHIVED"}
                   className="rounded-full border border-white/[0.08] px-3 py-2 text-xs text-muted hover:border-red-400/30 hover:text-red-300 disabled:opacity-40"
                 >
@@ -408,9 +477,11 @@ export default function AdminProductsPage() {
               <Field label="Name">
                 <input value={form.name} onChange={(e) => updateField("name", e.target.value)} required className={inputClass} placeholder="Cyberpunk Warrior" />
               </Field>
+
               <Field label="Slug">
                 <input value={form.slug} onChange={(e) => updateField("slug", e.target.value)} required className={inputClass} placeholder="cyberpunk-warrior" />
               </Field>
+
               <Field label="Description">
                 <textarea value={form.description} onChange={(e) => updateField("description", e.target.value)} className={`${inputClass} min-h-28 rounded-2xl py-3`} placeholder="Describe the physical product…" />
               </Field>
@@ -419,7 +490,9 @@ export default function AdminProductsPage() {
                 <Field label="Category">
                   <select value={form.categoryId} onChange={(e) => updateField("categoryId", e.target.value)} className={inputClass}>
                     <option value="">Uncategorized</option>
-                    {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
                   </select>
                 </Field>
                 <Field label="Status">
@@ -438,6 +511,9 @@ export default function AdminProductsPage() {
                 <Field label="Compare-at price (INR)">
                   <input value={form.compareAt} onChange={(e) => updateField("compareAt", e.target.value)} type="number" min="0" step="0.01" className={inputClass} placeholder="1999" />
                 </Field>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Stock">
                   <input value={form.stock} onChange={(e) => updateField("stock", e.target.value)} type="number" min="0" step="1" className={inputClass} />
                 </Field>
@@ -464,21 +540,6 @@ export default function AdminProductsPage() {
               </Field>
 
               <div>
-                <p className="text-xs font-medium text-foreground">Product media</p>
-                <div className="mt-3 space-y-4">
-                  <Field label="Primary image URL">
-                    <input value={form.imageUrl} onChange={(e) => updateField("imageUrl", e.target.value)} type="url" className={inputClass} placeholder="https://cdn.example.com/product.webp" />
-                  </Field>
-                  <Field label="3D preview GLB URL">
-                    <input value={form.modelPreviewUrl} onChange={(e) => updateField("modelPreviewUrl", e.target.value)} type="url" className={inputClass} placeholder="https://cdn.example.com/product.glb" />
-                  </Field>
-                </div>
-                <p className="mt-2 text-[11px] leading-5 text-muted">
-                  These assets power the storefront and interactive viewer. They are not customer downloads.
-                </p>
-              </div>
-
-              <div>
                 <p className="text-xs font-medium text-foreground">Merchandising</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   <Toggle label="Featured" value={form.isFeatured} onChange={(value) => updateField("isFeatured", value)} />
@@ -487,9 +548,72 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
+              <div>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Product assets</p>
+                    <p className="mt-1 text-[11px] leading-5 text-muted">Upload the product image and the model used by the interactive viewer. Uploaded assets are not customer downloads.</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className="cursor-pointer rounded-2xl border border-dashed border-white/[0.12] p-4 transition-colors hover:border-primary/40 hover:bg-white/[0.02]">
+                    <span className="block text-xs font-medium">Upload product image</span>
+                    <span className="mt-1 block text-[11px] text-muted">JPG, PNG, WEBP</span>
+                    <input
+                      type="file"
+                      accept={IMAGE_ACCEPT}
+                      className="sr-only"
+                      disabled={!selected || uploading !== null}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void handleFileUpload(file, "image");
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                    <span className="mt-3 inline-flex rounded-full border border-white/[0.08] px-3 py-2 text-xs">
+                      {uploading === "image" ? "Uploading…" : selected ? "Choose image" : "Create product first"}
+                    </span>
+                  </label>
+
+                  <label className="cursor-pointer rounded-2xl border border-dashed border-white/[0.12] p-4 transition-colors hover:border-primary/40 hover:bg-white/[0.02]">
+                    <span className="block text-xs font-medium">Upload 3D model</span>
+                    <span className="mt-1 block text-[11px] text-muted">GLB, GLTF, FBX, OBJ, PLY, STL, USD, ABC, BVH</span>
+                    <input
+                      type="file"
+                      accept={MODEL_ACCEPT}
+                      className="sr-only"
+                      disabled={!selected || uploading !== null}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void handleFileUpload(file, "model");
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                    <span className="mt-3 inline-flex rounded-full border border-white/[0.08] px-3 py-2 text-xs">
+                      {uploading === "model" ? "Uploading…" : selected ? "Choose model" : "Create product first"}
+                    </span>
+                  </label>
+                </div>
+
+                {selected && files.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {files.map((file) => (
+                      <div key={file.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] px-3 py-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-medium">{file.originalName}</p>
+                          <p className="mt-1 text-[10px] uppercase tracking-[0.08em] text-muted">{file.format} · {file.processingStatus.toLowerCase()}</p>
+                        </div>
+                        <button type="button" onClick={() => void handleDeleteFile(file)} className="rounded-full border border-white/[0.08] px-3 py-2 text-[11px] text-muted hover:border-red-400/30 hover:text-red-300">Delete</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || uploading !== null}
                 className="w-full min-h-12 rounded-full bg-primary px-6 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
               >
                 {saving ? "Saving…" : selected ? "Save changes" : "Create product"}
