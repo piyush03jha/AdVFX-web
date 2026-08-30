@@ -13,12 +13,17 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AdminOrderListDto } from './dto/admin-order-list.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { CreateReturnRequestDto } from './dto/create-return-request.dto';
+import { ReturnsService } from './returns.service';
 import { OrdersService } from './orders.service';
 
 @UseGuards(AuthGuard)
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly returnsService: ReturnsService,
+  ) {}
 
   @Post()
   create(@Req() req: any, @Body() dto: CreateOrderDto) {
@@ -39,6 +44,20 @@ export class OrdersController {
     return this.ordersService.findOne(req.user.id, id);
   }
 
+  @Post(':id/return-request')
+  createReturnRequest(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: CreateReturnRequestDto,
+  ) {
+    return this.returnsService.create(req.user.id, id, dto);
+  }
+
+  @Get('returns/mine')
+  findMineReturns(@Req() req: any) {
+    return this.returnsService.mine(req.user.id);
+  }
+
   @UseGuards(AdminGuard)
   @Get('admin/list')
   findAllAdmin(@Req() req: any, @Body() _body: AdminOrderListDto) {
@@ -55,5 +74,20 @@ export class OrdersController {
   @Patch('admin/:id/status')
   updateStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
     return this.ordersService.updateStatus(id, dto.status);
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('admin/returns')
+  findAllReturns() {
+    return this.returnsService.findAllAdmin();
+  }
+
+  @UseGuards(AdminGuard)
+  @Patch('admin/returns/:id')
+  updateReturnStatus(
+    @Param('id') id: string,
+    @Body('status') status: 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'REFUNDED',
+  ) {
+    return this.returnsService.updateStatus(id, status);
   }
 }
