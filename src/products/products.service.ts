@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -12,34 +13,31 @@ export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateProductDto) {
-    const existingProduct = await this.prisma.product.findUnique({
-      where: {
-        slug: dto.slug,
-      },
-    });
+    await this.ensureSlugAvailable(dto.slug);
 
-    if (existingProduct) {
-      throw new ConflictException(
-        `A product with slug "${dto.slug}" already exists`,
-      );
-    }
+    const {
+      stock,
+      lowStockAt,
+      ...productData
+    } = dto;
 
     return this.prisma.product.create({
       data: {
-        name: dto.name,
-        slug: dto.slug,
+        ...productData,
+        inventory: {
+          create: {
+            stock: stock ?? 0,
+            lowStockAt: lowStockAt ?? 5,
+          },
+        },
       },
-      include: {
-        files: true,
-      },
+      include: this.productInclude(),
     });
   }
 
   async findAll() {
     return this.prisma.product.findMany({
-      include: {
-        files: true,
-      },
+      include: this.productInclude(),
       orderBy: {
         createdAt: 'desc',
       },
@@ -49,9 +47,7 @@ export class ProductsService {
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: {
-        files: true,
-      },
+      include: this.productInclude(),
     });
 
     if (!product) {
@@ -64,9 +60,7 @@ export class ProductsService {
   async findBySlug(slug: string) {
     const product = await this.prisma.product.findUnique({
       where: { slug },
-      include: {
-        files: true,
-      },
+      include: this.productInclude(),
     });
 
     if (!product) {
@@ -80,40 +74,90 @@ export class ProductsService {
     await this.findOne(id);
 
     if (dto.slug) {
-      const existingProduct = await this.prisma.product.findFirst({
-        where: {
-          slug: dto.slug,
-          NOT: {
-            id,
-          },
-        },
-      });
-
-      if (existingProduct) {
-        throw new ConflictException(
-          `A product with slug "${dto.slug}" already exists`,
-        );
-      }
+      await this.ensureSlugAvailable(dto.slug, id);
     }
 
-    return this.prisma.product.update({
-      where: { id },
-      data: dto,
-      include: {
-        files: true,
-      },
+    const {
+      stock,
+      lowStockAt,
+      ...productData
+    } = dto;
+
+    return this.prisma.$transaction(async (tx) => {
+      const product = await tx.product.update({
+        where: { id },
+        data: productData,
+        include: this.productInclude(),
+      });
+
+      if (stock !== undefined || lowStockAt !== undefined) {
+        await tx.productInventory.upsert({
+          where: { productId: id },
+          create: {
+            productId: id,
+            stock: stock ?? 0,
+            lowStockAt: lowStockAt ?? 5,
+          },
+          update: {
+            ...(stock !== undefined ? { stock } : {}),
+            ...(lowStockAt !== undefined ? { lowStockAt } : {}),
+          },
+        });
+      }
+
+      return tx.product.findUniqueOrThrow({
+        where: { id: product.id },
+        include: this.productInclude(),
+      });
     });
   }
 
   async remove(id: string) {
     await this.findOne(id);
 
-    await this.prisma.product.delete({
+    await this.prisma.product.update({
       where: { id },
+      data: {
+        status: 'ARCHIVED',
+      },
     });
 
     return {
-      message: 'Product deleted successfully',
+      message: 'Product archived successfully',
+    };
+  }
+
+  private async ensureSlugAvailable(
+    slug: string,
+    productId?: string,
+  ) {
+    const existingProduct = await this.prisma.product.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+
+    if (existingProduct && existingProduct.id !== productId) {
+      throw new ConflictException(
+        `A product with slug "${slug}" already exists`,
+      );
+    }
+  }
+
+  private productInclude(): Prisma.ProductInclude {
+    return {
+      category: true,
+      inventory: true,
+      prices: {
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
+      },
+      media: {
+        orderBy: { sortOrder: 'asc' },
+      },
+      tags: {
+        include: { tag: true },
+      },
+      files: true,
     };
   }
 }
