@@ -8,6 +8,8 @@ import { ProductsModule } from "./products/products.module";
 import { ProductFilesModule } from "./product-files/product-files.module";
 import { ProcessingJobsModule } from "./processing-jobs/processing-jobs.module";
 import { CategoriesModule } from "./categories/categories.module";
+import { CartModule } from "./cart/cart.module";
+import { OrdersModule } from "./orders/orders.module";
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { CategoriesModule } from "./categories/categories.module";
     ProductsModule,
     ProductFilesModule,
     ProcessingJobsModule,
+    CartModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
