@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrderStatus, Prisma } from '@prisma/client';
+import { InventoryReservationStatus, OrderStatus, Prisma } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -13,11 +13,15 @@ const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   REFUNDED: [],
 };
 
+const RESERVATION_MINUTES = 30;
+
 @Injectable()
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createFromCart(userId: string, shippingAddressId: string) {
+    const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60_000);
+
     return this.prisma.$transaction(async (tx) => {
       const cart = await tx.cart.findUnique({
         where: { userId },
@@ -62,12 +66,8 @@ export class OrdersService {
           throw new BadRequestException(`Product "${product.name}" is unavailable`);
         }
 
-        if (
-          product.inventory?.trackStock &&
-          !product.inventory.allowBackorder &&
-          item.quantity > product.inventory.stock
-        ) {
-          throw new BadRequestException(`Insufficient stock for "${product.name}"`);
+        if (item.quantity <= 0) {
+          throw new BadRequestException(`Invalid quantity for "${product.name}"`);
         }
 
         const lineTotal = price.amountMinor * item.quantity;
@@ -100,31 +100,57 @@ export class OrdersService {
       });
 
       for (const item of cart.items) {
-        if (item.product.inventory?.trackStock && !item.product.inventory.allowBackorder) {
-          const result = await tx.productInventory.updateMany({
-            where: {
-              productId: item.product.id,
-              stock: { gte: item.quantity },
-            },
-            data: { stock: { decrement: item.quantity } },
-          });
-
-          if (result.count !== 1) {
-            throw new BadRequestException(`Stock changed for "${item.product.name}"; please try again`);
-          }
+        const inventory = item.product.inventory;
+        if (!inventory || !inventory.trackStock || inventory.allowBackorder) {
+          continue;
         }
+
+        const available = inventory.stock - inventory.reserved;
+        if (available < item.quantity) {
+          throw new BadRequestException(`Insufficient stock for "${item.product.name}"`);
+        }
+
+        const updated = await tx.productInventory.updateMany({
+          where: {
+            productId: item.product.id,
+            stock: { gte: inventory.reserved + item.quantity },
+          },
+          data: { reserved: { increment: item.quantity } },
+        });
+
+        if (updated.count !== 1) {
+          throw new BadRequestException(
+            `Stock changed for "${item.product.name}"; please try again`,
+          );
+        }
+
+        await tx.inventoryReservation.create({
+          data: {
+            productId: item.product.id,
+            orderId: order.id,
+            quantity: item.quantity,
+            status: 'ACTIVE',
+            expiresAt,
+          },
+        });
       }
 
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
-      return order;
+      return this.findOneForTransaction(tx, order.id);
     });
   }
 
   async findMine(userId: string) {
     return this.prisma.order.findMany({
       where: { userId },
-      include: { items: true, shippingAddress: true, payment: true, shipment: true },
+      include: {
+        items: true,
+        shippingAddress: true,
+        payment: true,
+        shipment: true,
+        inventoryReservations: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -132,7 +158,13 @@ export class OrdersService {
   async findOne(userId: string, id: string) {
     const order = await this.prisma.order.findFirst({
       where: { id, userId },
-      include: { items: true, shippingAddress: true, payment: true, shipment: true },
+      include: {
+        items: true,
+        shippingAddress: true,
+        payment: true,
+        shipment: true,
+        inventoryReservations: true,
+      },
     });
 
     if (!order) throw new NotFoundException('Order not found');
@@ -142,7 +174,14 @@ export class OrdersService {
   async findAllAdmin(status?: OrderStatus) {
     return this.prisma.order.findMany({
       where: status ? { status } : undefined,
-      include: { items: true, shippingAddress: true, payment: true, shipment: true, user: true },
+      include: {
+        items: true,
+        shippingAddress: true,
+        payment: true,
+        shipment: true,
+        inventoryReservations: true,
+        user: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -150,7 +189,14 @@ export class OrdersService {
   async findOneAdmin(id: string) {
     const order = await this.prisma.order.findUnique({
       where: { id },
-      include: { items: true, shippingAddress: true, payment: true, shipment: true, user: true },
+      include: {
+        items: true,
+        shippingAddress: true,
+        payment: true,
+        shipment: true,
+        inventoryReservations: true,
+        user: true,
+      },
     });
 
     if (!order) throw new NotFoundException('Order not found');
@@ -167,32 +213,177 @@ export class OrdersService {
       );
     }
 
-    return this.prisma.order.update({
-      where: { id },
-      data: {
-        status,
-        ...(status === 'SHIPPED'
-          ? {
-              shipment: {
-                upsert: {
-                  create: { status: 'SHIPPED', shippedAt: new Date() },
-                  update: { status: 'SHIPPED', shippedAt: new Date() },
+    return this.prisma.$transaction(async (tx) => {
+      if (status === 'CANCELLED') {
+        await this.releaseReservations(tx, id, InventoryReservationStatus.RELEASED);
+      }
+
+      if (status === 'CONFIRMED' && order.status === 'PENDING_PAYMENT') {
+        await this.consumeReservations(tx, id);
+      }
+
+      return tx.order.update({
+        where: { id },
+        data: {
+          status,
+          ...(status === 'SHIPPED'
+            ? {
+                shipment: {
+                  upsert: {
+                    create: { status: 'SHIPPED', shippedAt: new Date() },
+                    update: { status: 'SHIPPED', shippedAt: new Date() },
+                  },
                 },
-              },
-            }
-          : {}),
-        ...(status === 'DELIVERED'
-          ? {
-              shipment: {
-                upsert: {
-                  create: { status: 'DELIVERED', deliveredAt: new Date() },
-                  update: { status: 'DELIVERED', deliveredAt: new Date() },
+              }
+            : {}),
+          ...(status === 'DELIVERED'
+            ? {
+                shipment: {
+                  upsert: {
+                    create: { status: 'DELIVERED', deliveredAt: new Date() },
+                    update: { status: 'DELIVERED', deliveredAt: new Date() },
+                  },
                 },
-              },
-            }
-          : {}),
+              }
+            : {}),
+        },
+        include: {
+          items: true,
+          shippingAddress: true,
+          payment: true,
+          shipment: true,
+          inventoryReservations: true,
+          user: true,
+        },
+      });
+    });
+  }
+
+  async expireReservations() {
+    const expired = await this.prisma.inventoryReservation.findMany({
+      where: {
+        status: 'ACTIVE',
+        expiresAt: { lte: new Date() },
       },
-      include: { items: true, shippingAddress: true, payment: true, shipment: true, user: true },
+      select: { orderId: true },
+      distinct: ['orderId'],
+    });
+
+    for (const reservation of expired) {
+      await this.prisma.$transaction(async (tx) => {
+        await this.releaseReservations(tx, reservation.orderId, InventoryReservationStatus.EXPIRED);
+
+        const order = await tx.order.findUnique({
+          where: { id: reservation.orderId },
+          select: { status: true },
+        });
+
+        if (order?.status === 'PENDING_PAYMENT') {
+          await tx.order.update({
+            where: { id: reservation.orderId },
+            data: { status: 'CANCELLED' },
+          });
+        }
+      });
+    }
+
+    return { expiredOrders: expired.length };
+  }
+
+  private async releaseReservations(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    status: InventoryReservationStatus,
+  ) {
+    const reservations = await tx.inventoryReservation.findMany({
+      where: { orderId, status: 'ACTIVE' },
+    });
+
+    for (const reservation of reservations) {
+      const updated = await tx.productInventory.updateMany({
+        where: {
+          productId: reservation.productId,
+          reserved: { gte: reservation.quantity },
+        },
+        data: { reserved: { decrement: reservation.quantity } },
+      });
+
+      if (updated.count !== 1) {
+        throw new BadRequestException(
+          `Unable to release inventory reservation for product ${reservation.productId}`,
+        );
+      }
+
+      await tx.inventoryReservation.update({
+        where: { id: reservation.id },
+        data: {
+          status,
+          releasedAt: new Date(),
+        },
+      });
+    }
+  }
+
+  private async consumeReservations(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+  ) {
+    const reservations = await tx.inventoryReservation.findMany({
+      where: { orderId, status: 'ACTIVE' },
+    });
+
+    for (const reservation of reservations) {
+      const inventory = await tx.productInventory.findUnique({
+        where: { productId: reservation.productId },
+      });
+
+      if (!inventory || inventory.reserved < reservation.quantity) {
+        throw new BadRequestException(
+          `Unable to consume inventory reservation for product ${reservation.productId}`,
+        );
+      }
+
+      const updated = await tx.productInventory.updateMany({
+        where: {
+          productId: reservation.productId,
+          stock: { gte: reservation.quantity },
+          reserved: { gte: reservation.quantity },
+        },
+        data: {
+          stock: { decrement: reservation.quantity },
+          reserved: { decrement: reservation.quantity },
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new BadRequestException(
+          `Unable to finalize inventory for product ${reservation.productId}`,
+        );
+      }
+
+      await tx.inventoryReservation.update({
+        where: { id: reservation.id },
+        data: {
+          status: 'CONSUMED',
+          releasedAt: null,
+        },
+      });
+    }
+  }
+
+  private findOneForTransaction(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+  ) {
+    return tx.order.findUniqueOrThrow({
+      where: { id: orderId },
+      include: {
+        items: true,
+        shippingAddress: true,
+        payment: true,
+        shipment: true,
+        inventoryReservations: true,
+      },
     });
   }
 
