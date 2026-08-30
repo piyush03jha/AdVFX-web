@@ -13,6 +13,7 @@ import { OrdersModule } from "./orders/orders.module";
 import { ShipmentsModule } from "./shipments/shipments.module";
 import { CustomBuildModule } from "./custom-build/custom-build.module";
 import { UsersModule } from "./users/users.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { UsersModule } from "./users/users.module";
     OrdersModule,
     ShipmentsModule,
     CustomBuildModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
