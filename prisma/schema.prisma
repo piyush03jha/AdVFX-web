@@ -220,6 +220,9 @@ model Order {
   totalMinor Int
   shippingRuleId String?
   shippingRule ShippingRule? @relation(fields: [shippingRuleId], references: [id], onDelete: SetNull)
+  promotionId String?
+  promotion Promotion? @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  appliedCouponCode String?
   shippingAddressId String?
   shippingAddress Address? @relation(fields: [shippingAddressId], references: [id], onDelete: SetNull)
   items OrderItem[]
@@ -233,7 +236,7 @@ model Order {
   @@index([createdAt])
 }
 
-enum OrderStatus { PENDING_PAYMENT CONFIRMED PROCESSING SHIPPED DELIVERED CANCELLED REFUNDED }
+enum OrderStatus { PENDING_PAYMENT CONFIRMED PROCESSING DELIVERED SHIPPED CANCELLED REFUNDED }
 
 model OrderItem {
   id String @id @default(cuid())
@@ -415,6 +418,44 @@ model ShippingRule {
 }
 
 enum ShippingRuleType { FREE FLAT_RATE FREE_ABOVE WEIGHT_BASED }
+
+model TaxRule {
+  id String @id @default(cuid())
+  name String
+  countryCode String
+  stateCode String?
+  rateBps Int
+  applyToShipping Boolean @default(false)
+  priority Int @default(0)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([isActive, priority])
+  @@index([countryCode, stateCode])
+}
+
+model Promotion {
+  id String @id @default(cuid())
+  name String
+  description String?
+  code String? @unique
+  type PromotionType
+  value Int
+  minSubtotalMinor Int?
+  maxDiscountMinor Int?
+  startsAt DateTime?
+  endsAt DateTime?
+  usageLimit Int?
+  usageCount Int @default(0)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders Order[]
+  @@index([code])
+  @@index([isActive, startsAt, endsAt])
+}
+
+enum PromotionType { PERCENTAGE FIXED }
 
 model ProductFile {
   id String @id @default(cuid())
