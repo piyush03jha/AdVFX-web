@@ -7,10 +7,11 @@ import { PricingService } from '../pricing/pricing.service';
 
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING_PAYMENT: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['PROCESSING', 'CANCELLED', 'REFUNDED'],
-  PROCESSING: ['SHIPPED', 'CANCELLED'],
+  CONFIRMED: ['PROCESSING', 'CANCELLED'],
+  PROCESSING: ['READY_TO_SHIP', 'CANCELLED'],
+  READY_TO_SHIP: ['SHIPPED', 'CANCELLED'],
   SHIPPED: ['DELIVERED'],
-  DELIVERED: ['REFUNDED'],
+  DELIVERED: [],
   CANCELLED: [],
   REFUNDED: [],
 };
@@ -35,22 +36,15 @@ export class OrdersService {
         include: {
           items: {
             include: {
-              product: {
-                include: {
-                  inventory: true,
-                  prices: { where: { isActive: true }, orderBy: { createdAt: 'desc' }, take: 1 },
-                },
-              },
+              product: { include: { inventory: true, prices: { where: { isActive: true }, orderBy: { createdAt: 'desc' }, take: 1 } } },
             },
           },
         },
       });
-
       if (!cart || cart.items.length === 0) throw new BadRequestException('Cart is empty');
 
       const address = await tx.address.findFirst({ where: { id: shippingAddressId, userId } });
       if (!address) throw new NotFoundException('Shipping address not found');
-
       if (quote.summary.totalMinor < 0) throw new BadRequestException('Invalid checkout total');
 
       const orderItems: Prisma.OrderItemCreateWithoutOrderInput[] = quote.items.map((item) => ({
@@ -83,11 +77,7 @@ export class OrdersService {
 
       if (quote.promotion) {
         const promotion = await tx.promotion.updateMany({
-          where: {
-            id: quote.promotion.id,
-            isActive: true,
-            OR: [{ usageLimit: null }, { usageCount: { lt: 1 } }],
-          },
+          where: { id: quote.promotion.id, isActive: true, OR: [{ usageLimit: null }, { usageCount: { lt: 1 } }] },
           data: { usageCount: { increment: 1 } },
         });
         if (promotion.count !== 1) throw new BadRequestException('Coupon usage limit has been reached');
@@ -96,27 +86,13 @@ export class OrdersService {
       for (const item of cart.items) {
         const inventory = item.product.inventory;
         if (!inventory || !inventory.trackStock || inventory.allowBackorder) continue;
-
         const updated = await tx.productInventory.updateMany({
-          where: {
-            productId: item.product.id,
-            stock: { gte: inventory.reserved + item.quantity },
-          },
+          where: { productId: item.product.id, stock: { gte: inventory.reserved + item.quantity } },
           data: { reserved: { increment: item.quantity } },
         });
-
-        if (updated.count !== 1) {
-          throw new BadRequestException(`Stock changed for "${item.product.name}"; please try again`);
-        }
-
+        if (updated.count !== 1) throw new BadRequestException(`Stock changed for "${item.product.name}"; please try again`);
         await tx.inventoryReservation.create({
-          data: {
-            productInventoryId: inventory.id,
-            orderId: order.id,
-            quantity: item.quantity,
-            status: 'ACTIVE',
-            expiresAt,
-          },
+          data: { productInventoryId: inventory.id, orderId: order.id, quantity: item.quantity, status: 'ACTIVE', expiresAt },
         });
       }
 
@@ -133,7 +109,6 @@ export class OrdersService {
         entityId: result.id,
       });
     }
-
     return result;
   }
 
@@ -189,7 +164,6 @@ export class OrdersService {
       const type = typeByStatus[status];
       if (type) await this.notifications.create(updated.userId, { type, title: `Order ${status.toLowerCase()}`, message: `Order ${updated.orderNumber} is now ${status.toLowerCase()}.`, entityType: 'ORDER', entityId: updated.id });
     }
-
     return updated;
   }
 
