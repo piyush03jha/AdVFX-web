@@ -5,8 +5,11 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateMediaDto } from './dto/create-media.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { UpsertPriceDto } from './dto/upsert-price.dto';
 
 @Injectable()
 export class ProductsService {
@@ -15,11 +18,7 @@ export class ProductsService {
   async create(dto: CreateProductDto) {
     await this.ensureSlugAvailable(dto.slug);
 
-    const {
-      stock,
-      lowStockAt,
-      ...productData
-    } = dto;
+    const { stock, lowStockAt, ...productData } = dto;
 
     return this.prisma.product.create({
       data: {
@@ -35,12 +34,11 @@ export class ProductsService {
     });
   }
 
-  async findAll() {
+  async findAll(includeArchived = false) {
     return this.prisma.product.findMany({
+      where: includeArchived ? undefined : { status: { not: 'ARCHIVED' } },
       include: this.productInclude(),
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -50,10 +48,7 @@ export class ProductsService {
       include: this.productInclude(),
     });
 
-    if (!product) {
-      throw new NotFoundException(`Product "${id}" not found`);
-    }
-
+    if (!product) throw new NotFoundException(`Product "${id}" not found`);
     return product;
   }
 
@@ -63,32 +58,19 @@ export class ProductsService {
       include: this.productInclude(),
     });
 
-    if (!product) {
-      throw new NotFoundException(`Product "${slug}" not found`);
-    }
-
+    if (!product) throw new NotFoundException(`Product "${slug}" not found`);
     return product;
   }
 
   async update(id: string, dto: UpdateProductDto) {
     await this.findOne(id);
 
-    if (dto.slug) {
-      await this.ensureSlugAvailable(dto.slug, id);
-    }
+    if (dto.slug) await this.ensureSlugAvailable(dto.slug, id);
 
-    const {
-      stock,
-      lowStockAt,
-      ...productData
-    } = dto;
+    const { stock, lowStockAt, ...productData } = dto;
 
     return this.prisma.$transaction(async (tx) => {
-      const product = await tx.product.update({
-        where: { id },
-        data: productData,
-        include: this.productInclude(),
-      });
+      await tx.product.update({ where: { id }, data: productData });
 
       if (stock !== undefined || lowStockAt !== undefined) {
         await tx.productInventory.upsert({
@@ -106,7 +88,7 @@ export class ProductsService {
       }
 
       return tx.product.findUniqueOrThrow({
-        where: { id: product.id },
+        where: { id },
         include: this.productInclude(),
       });
     });
@@ -114,32 +96,117 @@ export class ProductsService {
 
   async remove(id: string) {
     await this.findOne(id);
-
     await this.prisma.product.update({
       where: { id },
-      data: {
-        status: 'ARCHIVED',
-      },
+      data: { status: 'ARCHIVED' },
     });
-
-    return {
-      message: 'Product archived successfully',
-    };
+    return { message: 'Product archived successfully' };
   }
 
-  private async ensureSlugAvailable(
-    slug: string,
-    productId?: string,
-  ) {
+  async setPrice(id: string, dto: UpsertPriceDto) {
+    await this.ensureProductExists(id);
+
+    const amountMinor = dto.amountMinor;
+    const compareAtMinor = dto.compareAtMinor;
+
+    if (compareAtMinor !== undefined && compareAtMinor < amountMinor) {
+      throw new ConflictException('compareAtMinor cannot be lower than amountMinor');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.productPrice.updateMany({
+        where: { productId: id, isActive: true },
+        data: { isActive: false },
+      });
+
+      return tx.productPrice.create({
+        data: {
+          productId: id,
+          currency: dto.currency ?? 'INR',
+          amountMinor,
+          compareAtMinor,
+          startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+          endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
+          isActive: true,
+        },
+      });
+    });
+  }
+
+  async updateInventory(id: string, dto: UpdateInventoryDto) {
+    await this.ensureProductExists(id);
+
+    return this.prisma.productInventory.upsert({
+      where: { productId: id },
+      create: {
+        productId: id,
+        stock: dto.stock ?? 0,
+        lowStockAt: dto.lowStockAt ?? 5,
+        trackStock: dto.trackStock ?? true,
+        allowBackorder: dto.allowBackorder ?? false,
+      },
+      update: {
+        ...(dto.stock !== undefined ? { stock: dto.stock } : {}),
+        ...(dto.lowStockAt !== undefined ? { lowStockAt: dto.lowStockAt } : {}),
+        ...(dto.trackStock !== undefined ? { trackStock: dto.trackStock } : {}),
+        ...(dto.allowBackorder !== undefined ? { allowBackorder: dto.allowBackorder } : {}),
+      },
+    });
+  }
+
+  async addMedia(id: string, dto: CreateMediaDto) {
+    await this.ensureProductExists(id);
+
+    return this.prisma.$transaction(async (tx) => {
+      if (dto.isPrimary) {
+        await tx.productMedia.updateMany({
+          where: { productId: id, type: dto.type, isPrimary: true },
+          data: { isPrimary: false },
+        });
+      }
+
+      return tx.productMedia.create({
+        data: {
+          productId: id,
+          type: dto.type,
+          url: dto.url,
+          altText: dto.altText,
+          sortOrder: dto.sortOrder ?? 0,
+          isPrimary: dto.isPrimary ?? false,
+        },
+      });
+    });
+  }
+
+  async removeMedia(id: string, mediaId: string) {
+    const media = await this.prisma.productMedia.findFirst({
+      where: { id: mediaId, productId: id },
+      select: { id: true },
+    });
+
+    if (!media) throw new NotFoundException(`Product media "${mediaId}" not found`);
+
+    await this.prisma.productMedia.delete({ where: { id: mediaId } });
+    return { message: 'Product media removed successfully' };
+  }
+
+  private async ensureProductExists(id: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!product) throw new NotFoundException(`Product "${id}" not found`);
+  }
+
+  private async ensureSlugAvailable(slug: string, productId?: string) {
     const existingProduct = await this.prisma.product.findUnique({
       where: { slug },
       select: { id: true },
     });
 
     if (existingProduct && existingProduct.id !== productId) {
-      throw new ConflictException(
-        `A product with slug "${slug}" already exists`,
-      );
+      throw new ConflictException(`A product with slug "${slug}" already exists`);
     }
   }
 
@@ -151,12 +218,8 @@ export class ProductsService {
         where: { isActive: true },
         orderBy: { createdAt: 'desc' },
       },
-      media: {
-        orderBy: { sortOrder: 'asc' },
-      },
-      tags: {
-        include: { tag: true },
-      },
+      media: { orderBy: { sortOrder: 'asc' } },
+      tags: { include: { tag: true } },
       files: true,
     };
   }
