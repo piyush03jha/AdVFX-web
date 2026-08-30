@@ -9,6 +9,7 @@ import {
 import { orders } from "@/config/orders";
 import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
+import { Button } from "@/components/ui/Button";
 
 export default function OrderConfirmationPage() {
   const order = orders[0];
@@ -194,47 +195,13 @@ export default function OrderConfirmationPage() {
               sm:grid-cols-2
             "
           >
-            <Link
-              href={`/account/orders/${order.id}`}
-              className="
-                flex
-                min-h-11
-                items-center
-                justify-center
-                rounded-xl
-                bg-primary
-                px-4
-                text-xs
-                font-medium
-                text-white
-                shadow-[0_0_25px_var(--glow-primary)]
-                transition-colors
-                hover:bg-primary-hover
-              "
-            >
+            <Button href={`/account/orders/${order.id}`} size="md">
               Track order
-            </Link>
+            </Button>
 
-            <Link
-              href="/shop"
-              className="
-                flex
-                min-h-11
-                items-center
-                justify-center
-                rounded-xl
-                border
-                border-border
-                px-4
-                text-xs
-                font-medium
-                text-foreground
-                transition-colors
-                hover:bg-surface-elevated
-              "
-            >
+            <Button href="/shop" variant="outline" size="md">
               Continue shopping
-            </Link>
+            </Button>
           </div>
         </div>
       </div>

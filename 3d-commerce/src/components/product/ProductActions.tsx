@@ -300,7 +300,7 @@ export function ProductActions({
             items-center
             justify-center
             gap-2
-            rounded-md
+            rounded-full
             border
             border-primary/60
             bg-transparent

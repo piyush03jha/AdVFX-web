@@ -309,8 +309,8 @@ function CategoryCard({
   index: number;
 }) {
   return (
-    <Link
-      href={`/categories/${category.slug}`}
+        <Link
+      href={`/shop/${category.slug}`}
       className="group block"
     >
       <Card

@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import {
   IconArrowRight,
   IconLock,
@@ -9,6 +7,7 @@ import {
   IconTruckDelivery,
 } from "@tabler/icons-react";
 
+import { Button } from "@/components/ui/Button";
 import { useCart } from "@/context/CartContext";
 
 export function CartSummary() {
@@ -77,27 +76,10 @@ export function CartSummary() {
         </span>
       </div>
 
-      <Link
-        href="/checkout"
-        className="
-          flex
-          min-h-12
-          w-full
-          items-center
-          justify-center
-          gap-2
-          rounded-md
-          bg-primary
-          px-5
-          text-sm
-          font-medium
-          text-white
-          transition-colors
-          hover:bg-primary-hover
-        "
-      >
-  ...
-</Link>
+      <Button href="/checkout" size="lg" className="mt-6 w-full">
+        Proceed to Checkout
+        <IconArrowRight size={16} />
+      </Button>
 
       <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/[0.07] pt-5">
         <TrustItem icon={<IconLock size={14} />} text="Secure checkout" />

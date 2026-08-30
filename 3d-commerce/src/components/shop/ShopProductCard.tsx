@@ -18,6 +18,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 
 import type {
   TrendingProduct,
@@ -31,7 +32,10 @@ export function ShopProductCard({
   product,
 }: ShopProductCardProps) {
   const { addItem } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
   const [added, setAdded] = useState(false);
+
+  const inWishlist = isInWishlist(product.id);
 
   const handleAddToCart = () => {
     addItem(product, "medium", 1);
@@ -40,6 +44,10 @@ export function ShopProductCard({
     window.setTimeout(() => {
       setAdded(false);
     }, 1600);
+  };
+
+  const handleToggleWishlist = () => {
+    toggleWishlist(product);
   };
 
   return (
@@ -125,22 +133,30 @@ export function ShopProductCard({
         )}
 
         <IconButton
-          label={`Add ${product.name} to wishlist`}
+          label={
+            inWishlist
+              ? `Remove ${product.name} from wishlist`
+              : `Add ${product.name} to wishlist`
+          }
           size="sm"
           variant="default"
-          className="
+          onClick={handleToggleWishlist}
+          className={`
             absolute
             right-3
             top-3
-            border-white/10
-            bg-black/35
-            text-white/80
             backdrop-blur-md
-          "
+            ${
+              inWishlist
+                ? "border-primary/40 bg-primary/15 text-primary"
+                : "border-white/10 bg-black/35 text-white/80"
+            }
+          `}
         >
           <IconHeart
             size={14}
             stroke={1.6}
+            fill={inWishlist ? "currentColor" : "none"}
           />
         </IconButton>
 

@@ -23,102 +23,51 @@ import {
 import { useCart } from "@/context/CartContext";
 
 const navItems = [
-  {
-    name: "Shop",
-    link: "/shop",
-  },
-  {
-    name: "Custom",
-    link: "/custom",
-  },
-  {
-    name: "Gaming",
-    link: "/shop/gaming",
-  },
-  {
-    name: "Anime",
-    link: "/shop/anime",
-  },
-  {
-    name: "Mobile/Tv",
-    link: "/shop/mobileTv",
-  },
+  { name: "Shop", link: "/shop" },
+  { name: "Custom", link: "/custom" },
+  { name: "Gaming", link: "/shop/gaming" },
+  { name: "Anime", link: "/shop/anime" },
+  { name: "Mobile / TV", link: "/shop/mobile-tv" },
 ];
 
 export function Navbar() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] =
-    useState(false);
-
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { itemCount, isLoaded } = useCart();
 
   return (
     <NavbarRoot>
-      {/* =================================================
-          DESKTOP NAVIGATION
-      ================================================= */}
-
       <NavBody>
         <NavbarLogo />
-
         <NavItems items={navItems} />
 
-        <div className="flex items-center gap-0.5">
-          {/* Search */}
-          <Link
-            href="/search"
-            aria-label="Search"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
-          >
+        <div className="relative z-50 flex shrink-0 items-center gap-0.5 pointer-events-auto">
+          <NavIconLink href="/search" label="Search">
             <IconSearch size={18} stroke={1.7} />
-          </Link>
+          </NavIconLink>
 
-          {/* Wishlist */}
-          <Link
-            href="/wishlist"
-            aria-label="Wishlist"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
-          >
+          <NavIconLink href="/wishlist" label="Wishlist">
             <IconHeart size={18} stroke={1.7} />
-          </Link>
+          </NavIconLink>
 
-          {/* Profile */}
-          <Link
-            href="/account"
-            aria-label="My account"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
-          >
+          <NavIconLink href="/account" label="My account">
             <IconUserCircle size={19} stroke={1.7} />
-          </Link>
+          </NavIconLink>
 
-          {/* Cart */}
           <CartLink itemCount={itemCount} isLoaded={isLoaded} />
         </div>
       </NavBody>
 
-      {/* =================================================
-          MOBILE NAVIGATION
-      ================================================= */}
-
       <MobileNav>
         <MobileNavHeader>
           <NavbarLogo />
-
           <div className="flex items-center gap-1">
-            <Link
-              href="/account"
-              aria-label="My account"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
-            >
+            <NavIconLink href="/account" label="My account">
               <IconUserCircle size={19} stroke={1.7} />
-            </Link>
-
+            </NavIconLink>
             <CartLink itemCount={itemCount} isLoaded={isLoaded} />
-
             <MobileNavToggle
               isOpen={isMobileMenuOpen}
-              onClick={() =>
-                setIsMobileMenuOpen((previous) => !previous)
-              }
+              onClick={() => setIsMobileMenuOpen((current) => !current)}
             />
           </div>
         </MobileNavHeader>
@@ -141,36 +90,62 @@ export function Navbar() {
           </div>
 
           <div className="mt-6 grid grid-cols-3 gap-3">
-            <Link
-              href="/search"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface text-sm text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground"
-            >
+            <MobileActionLink href="/search" onClick={() => setIsMobileMenuOpen(false)}>
               <IconSearch size={17} stroke={1.7} />
               <span className="hidden sm:inline">Search</span>
-            </Link>
-
-            <Link
-              href="/wishlist"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface text-sm text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground"
-            >
+            </MobileActionLink>
+            <MobileActionLink href="/wishlist" onClick={() => setIsMobileMenuOpen(false)}>
               <IconHeart size={17} stroke={1.7} />
               <span className="hidden sm:inline">Wishlist</span>
-            </Link>
-
-            <Link
-              href="/account"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface text-sm text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground"
-            >
+            </MobileActionLink>
+            <MobileActionLink href="/account" onClick={() => setIsMobileMenuOpen(false)}>
               <IconUserCircle size={17} stroke={1.7} />
               <span className="hidden sm:inline">Account</span>
-            </Link>
+            </MobileActionLink>
           </div>
         </MobileNavMenu>
       </MobileNav>
     </NavbarRoot>
+  );
+}
+
+function NavIconLink({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      className="relative z-50 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted pointer-events-auto transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function MobileActionLink({
+  href,
+  onClick,
+  children,
+}: {
+  href: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-surface text-sm text-muted transition-all duration-300 hover:border-primary hover:bg-surface-elevated hover:text-foreground"
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -184,20 +159,13 @@ function CartLink({
   return (
     <Link
       href="/cart"
-      aria-label={
-        itemCount > 0
-          ? `Shopping cart, ${itemCount} items`
-          : "Shopping cart"
-      }
-      className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
+      aria-label={itemCount > 0 ? `Shopping cart, ${itemCount} items` : "Shopping cart"}
+      className="relative z-50 flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted pointer-events-auto transition-all duration-300 hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <IconShoppingCart size={18} stroke={1.7} />
-
       <span
-        className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-white shadow-[0_0_12px_var(--glow-primary)] transition-all duration-200 ${
-          !isLoaded || itemCount === 0
-            ? "scale-90 opacity-0"
-            : "scale-100 opacity-100"
+        className={`pointer-events-none absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-white shadow-[0_0_12px_var(--glow-primary)] transition-all duration-200 ${
+          !isLoaded || itemCount === 0 ? "scale-90 opacity-0" : "scale-100 opacity-100"
         }`}
       >
         {itemCount}

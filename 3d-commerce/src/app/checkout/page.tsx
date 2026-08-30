@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
 import { IconLock, IconShoppingBag } from "@tabler/icons-react";
@@ -8,6 +7,7 @@ import { IconLock, IconShoppingBag } from "@tabler/icons-react";
 import { Navbar } from "@/components/layout/SiteNavbar";
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
 import { CheckoutSummary } from "@/components/checkout/CheckoutSummary";
+import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { useCart } from "@/context/CartContext";
 import type { CountryCode } from "@/config/countries";
@@ -68,7 +68,9 @@ function EmptyCheckout() {
       </div>
       <h2 className="mt-5 font-serif text-3xl tracking-[-0.04em] text-foreground">Your cart is empty</h2>
       <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted">Add a model to your cart before continuing to checkout.</p>
-      <Link href="/shop" className="mt-7 inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-medium text-white transition-colors hover:bg-primary-hover">Explore models</Link>
+      <Button href="/shop" size="lg" className="mt-7">
+        Explore models
+      </Button>
     </div>
   );
 }

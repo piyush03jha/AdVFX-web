@@ -6,16 +6,16 @@ import { Navbar } from "@/components/layout/SiteNavbar";
 export const metadata: Metadata = {
   title: "Shop 3D Models | Forma",
   description:
-    "Explore premium 3D models, digital collectibles, gaming assets, characters and custom-ready models.",
+    "Explore premium physical 3D products, collectibles, gaming products, characters and custom-ready models.",
 };
 
 export default function ShopPage() {
   return (
     <>
-    <Navbar />
-    <main className="min-h-screen bg-background">
-      <ShopProductGrid />
-    </main>
+      <Navbar />
+      <main className="min-h-screen bg-background">
+        <ShopProductGrid />
+      </main>
     </>
   );
 }
