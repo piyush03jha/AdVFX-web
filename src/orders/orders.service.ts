@@ -26,7 +26,15 @@ export class OrdersService {
     private readonly pricing: PricingService,
   ) {}
 
-  async createFromCart(userId: string, shippingAddressId: string, couponCode?: string) {
+  async createFromCart(userId: string, shippingAddressId: string, couponCode?: string, idempotencyKey?: string) {
+    if (idempotencyKey) {
+      const existing = await this.prisma.order.findFirst({
+        where: { userId, idempotencyKey },
+        include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true },
+      });
+      if (existing) return existing;
+    }
+
     const quote = await this.pricing.calculate(userId, { shippingAddressId, couponCode });
     const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60_000);
 
@@ -47,6 +55,11 @@ export class OrdersService {
       if (!address) throw new NotFoundException('Shipping address not found');
       if (quote.summary.totalMinor < 0) throw new BadRequestException('Invalid checkout total');
 
+      if (idempotencyKey) {
+        const raced = await tx.order.findFirst({ where: { userId, idempotencyKey }, include: { items: true, shippingAddress: true, payment: true, shipment: true, inventoryReservations: true, promotion: true, shippingRule: true } });
+        if (raced) return raced;
+      }
+
       const orderItems: Prisma.OrderItemCreateWithoutOrderInput[] = quote.items.map((item) => ({
         product: { connect: { id: item.productId } },
         productName: item.productName,
@@ -58,6 +71,7 @@ export class OrdersService {
       const order = await tx.order.create({
         data: {
           orderNumber: this.generateOrderNumber(),
+          idempotencyKey: idempotencyKey ?? null,
           user: { connect: { id: userId } },
           status: 'PENDING_PAYMENT',
           currency: quote.currency,
@@ -92,7 +106,7 @@ export class OrdersService {
         });
         if (updated.count !== 1) throw new BadRequestException(`Stock changed for "${item.product.name}"; please try again`);
         await tx.inventoryReservation.create({
-          data: { productInventoryId: inventory.id, orderId: order.id, quantity: item.quantity, status: 'ACTIVE', expiresAt },
+          data: { productId: item.product.id, productInventoryId: inventory.id, orderId: order.id, quantity: item.quantity, status: 'ACTIVE', expiresAt },
         });
       }
 
@@ -172,7 +186,7 @@ export class OrdersService {
     for (const reservation of expired) {
       await this.prisma.$transaction(async (tx) => {
         await this.releaseReservations(tx, reservation.orderId, InventoryReservationStatus.EXPIRED);
-        const order = await tx.order.findUnique({ where: { id: reservation.orderId }, select: { status: true, userId: true, orderNumber: true } });
+        const order = await tx.order.findUnique({ where: { id: reservation.orderId }, select: { status: true } });
         if (order?.status === 'PENDING_PAYMENT') await tx.order.update({ where: { id: reservation.orderId }, data: { status: 'CANCELLED' } });
       });
     }
@@ -182,6 +196,7 @@ export class OrdersService {
   private async releaseReservations(tx: Prisma.TransactionClient, orderId: string, status: InventoryReservationStatus) {
     const reservations = await tx.inventoryReservation.findMany({ where: { orderId, status: 'ACTIVE' } });
     for (const reservation of reservations) {
+      if (!reservation.productInventoryId) continue;
       const updated = await tx.productInventory.updateMany({ where: { id: reservation.productInventoryId, reserved: { gte: reservation.quantity } }, data: { reserved: { decrement: reservation.quantity } } });
       if (updated.count !== 1) throw new BadRequestException(`Unable to release inventory reservation for product ${reservation.productId}`);
       await tx.inventoryReservation.update({ where: { id: reservation.id }, data: { status, releasedAt: new Date() } });
@@ -191,6 +206,7 @@ export class OrdersService {
   private async consumeReservations(tx: Prisma.TransactionClient, orderId: string) {
     const reservations = await tx.inventoryReservation.findMany({ where: { orderId, status: 'ACTIVE' } });
     for (const reservation of reservations) {
+      if (!reservation.productInventoryId) continue;
       const updated = await tx.productInventory.updateMany({ where: { id: reservation.productInventoryId, stock: { gte: reservation.quantity }, reserved: { gte: reservation.quantity } }, data: { stock: { decrement: reservation.quantity }, reserved: { decrement: reservation.quantity } } });
       if (updated.count !== 1) throw new BadRequestException(`Unable to finalize inventory for product ${reservation.productId}`);
       await tx.inventoryReservation.update({ where: { id: reservation.id }, data: { status: 'CONSUMED', consumedAt: new Date(), releasedAt: null } });
