@@ -8,80 +8,204 @@ datasource db {
 
 /**
  * ============================================================
- * PRODUCT
+ * USERS / ADMIN
  * ============================================================
  */
 
-model Product {
-  id   String @id @default(cuid())
-  name String
-  slug String @unique
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  phone        String?
+  role         UserRole @default(CUSTOMER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  files ProductFile[]
+  createdProducts Product[] @relation("ProductCreatedBy")
+  updatedProducts Product[] @relation("ProductUpdatedBy")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+/**
+ * ============================================================
+ * CATALOG
+ * ============================================================
+ */
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+
+  @@index([isActive, sortOrder])
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  status ProductStatus @default(DRAFT)
+
+  /** Merchandising flags used by storefront queries. */
+  isFeatured  Boolean @default(false)
+  isTrending  Boolean @default(false)
+  isBestseller Boolean @default(false)
+  badge       String?
+
+  /** Physical product specifications. */
+  material    String?
+  scale       String?
+  dimensions  String?
+  height      String?
+  base        String?
+  packaging   String?
+  weight      String?
+
+  /** Product quantity currently available for sale. */
+  inventory ProductInventory?
+
+  prices ProductPrice[]
+  media  ProductMedia[]
+  files  ProductFile[]
+  tags   ProductTag[]
+
+  createdById String?
+  createdBy   User? @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedBy   User? @relation("ProductUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([isFeatured])
+  @@index([isTrending])
+  @@index([isBestseller])
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model ProductPrice {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  currency      String  @default("INR")
+  amountMinor   Int
+  compareAtMinor Int?
+  isActive      Boolean  @default(true)
+  startsAt      DateTime?
+  endsAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId, isActive])
+  @@index([currency])
+}
+
+model ProductInventory {
+  id        String  @id @default(cuid())
+  productId String  @unique
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  stock        Int @default(0)
+  lowStockAt   Int @default(5)
+  trackStock   Boolean @default(true)
+  allowBackorder Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+model ProductMedia {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  type      ProductMediaType
+  url       String
+  altText   String?
+  sortOrder Int      @default(0)
+  isPrimary Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId, type, sortOrder])
+}
+
+enum ProductMediaType {
+  IMAGE
+  MODEL_PREVIEW
+}
+
+model Tag {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  slug      String       @unique
+  createdAt DateTime     @default(now())
+
+  products ProductTag[]
+}
+
+model ProductTag {
+  productId String
+  tagId     String
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@index([tagId])
+}
+
 /**
  * ============================================================
- * PRODUCT FILE
+ * PRODUCT FILES / 3D ASSET PROCESSING
  * ============================================================
  */
 
 model ProductFile {
   id String @id @default(cuid())
 
-  /**
-   * Product
-   */
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  /**
-   * Original uploaded filename
-   */
   originalName String
+  storageKey   String
+  storageUrl   String?
 
-  /**
-   * Physical storage identifier
-   */
-  storageKey String
-
-  /**
-   * Optional storage/public URL
-   */
-  storageUrl String?
-
-  /**
-   * File format
-   */
-  format ProductFileFormat
-
-  /**
-   * General file category
-   */
+  format   ProductFileFormat
   fileType ProductFileType
-
-  /**
-   * MIME type
-   */
   mimeType String?
-
-  /**
-   * File size in bytes
-   */
   fileSize BigInt
 
-  /**
-   * Processing state
-   */
   processingStatus ProcessingStatus @default(PENDING)
-
-  /**
-   * Error generated during processing
-   */
-  processingError String?
+  processingError  String?
 
   imageWidth      Int?
   imageHeight     Int?
@@ -89,28 +213,11 @@ model ProductFile {
   imageHasAlpha   Boolean?
   imageColorSpace String?
 
-  /**
-   * If this file was generated from another file.
-   * Example:
-   * FBX -> GLB
-   */
   convertedFromId String?
+  convertedFrom   ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
+  convertedFiles  ProductFile[] @relation("ConvertedFiles")
 
-  convertedFrom ProductFile? @relation("ConvertedFiles", fields: [convertedFromId], references: [id])
-
-  /**
-   * Files generated from this file.
-   */
-  convertedFiles ProductFile[] @relation("ConvertedFiles")
-
-  /**
-   * Processing jobs where this file is the source.
-   */
   processingJobs ProductFileProcessingJob[]
-
-  /**
-   * Processing job that generated this file.
-   */
   generatedByJob ProductFileProcessingJob? @relation("ProcessingJobOutput")
 
   createdAt DateTime @default(now())
@@ -122,72 +229,28 @@ model ProductFile {
   @@index([convertedFromId])
 }
 
-/**
- * ============================================================
- * PRODUCT FILE PROCESSING JOB
- * ============================================================
- * Represents an asynchronous conversion/optimization job.
- * Example:
- * FBX
- * |
- * v
- * Processing Job
- * |
- * v
- * GLB
- */
-
 model ProductFileProcessingJob {
   id String @id @default(cuid())
 
-  /**
-   * Source ProductFile
-   */
   productFileId String
   productFile   ProductFile @relation(fields: [productFileId], references: [id], onDelete: Cascade)
 
-  /**
-   * Job state
-   */
-  status ProcessingJobStatus @default(QUEUED)
-
-  /**
-   * Retry information
-   */
-  attempts    Int @default(0)
-  maxAttempts Int @default(3)
-
-  /**
-   * Processing error
-   */
+  status       ProcessingJobStatus @default(QUEUED)
+  attempts     Int @default(0)
+  maxAttempts  Int @default(3)
   errorMessage String?
 
-  /**
-   * Generated output ProductFile.
-   * Nullable while the job is running
-   * or if processing fails.
-   */
-  outputFileId String?      @unique
+  outputFileId String? @unique
   outputFile   ProductFile? @relation("ProcessingJobOutput", fields: [outputFileId], references: [id], onDelete: SetNull)
 
-  /**
-   * Processing timestamps
-   */
   startedAt   DateTime?
   completedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([productFileId])
   @@index([status])
 }
-
-/**
- * ============================================================
- * PRODUCT FILE TYPE
- * ============================================================
- */
 
 enum ProductFileType {
   MODEL
@@ -195,24 +258,16 @@ enum ProductFileType {
   DOCUMENT
 }
 
-/**
- * ============================================================
- * PRODUCT FILE FORMAT
- * ============================================================
- */
-
 enum ProductFileFormat {
   ABC
   USD
   USDA
   USDC
-
   SVG
   PDF
   JPG
   WEBP
   PNG
-
   OBJ
   PLY
   STL
@@ -222,24 +277,12 @@ enum ProductFileFormat {
   GLTF
 }
 
-/**
- * ============================================================
- * FILE PROCESSING STATUS
- * ============================================================
- */
-
 enum ProcessingStatus {
   PENDING
   PROCESSING
   COMPLETED
   FAILED
 }
-
-/**
- * ============================================================
- * PROCESSING JOB STATUS
- * ============================================================
- */
 
 enum ProcessingJobStatus {
   QUEUED
