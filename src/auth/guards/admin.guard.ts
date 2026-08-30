@@ -5,11 +5,12 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
 
 @Injectable()
 export class AdminGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<FastifyRequest>();
     const user = request.user;
 
     if (!user) {
