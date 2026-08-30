@@ -8,11 +8,14 @@ import {
   StreamableFile,
   NotFoundException,
   Res,
+  UseGuards,
 } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { AdminGuard } from "../auth/guards/admin.guard";
 import { ProductFilesService } from "./product-files.service";
 import { StorageService } from "../storage/storage.service";
 
+@UseGuards(AdminGuard)
 @Controller("products/:productId/files")
 export class ProductFilesController {
   constructor(
@@ -30,9 +33,7 @@ export class ProductFilesController {
     };
 
     if (typeof request.file !== "function") {
-      throw new BadRequestException(
-        "Multipart upload support is not available",
-      );
+      throw new BadRequestException("Multipart upload support is not available");
     }
 
     const uploadedFile = await request.file();
@@ -50,10 +51,7 @@ export class ProductFilesController {
       buffer,
     };
 
-    const result = await this.productFilesService.upload(
-      productId,
-      file,
-    );
+    const result = await this.productFilesService.upload(productId, file);
 
     return reply.send(result);
   }
@@ -76,11 +74,7 @@ export class ProductFilesController {
     @Param("productId") productId: string,
     @Param("fileId") fileId: string,
   ) {
-    const file = await this.productFilesService.findOne(
-      productId,
-      fileId,
-    );
-
+    const file = await this.productFilesService.findOne(productId, fileId);
     const path = this.storage.getAbsolutePath(file.storageKey);
 
     try {
@@ -90,14 +84,10 @@ export class ProductFilesController {
 
       return new StreamableFile(stream, {
         type: file.mimeType ?? "application/octet-stream",
-        disposition: `attachment; filename="${encodeURIComponent(
-          file.originalName,
-        )}"`,
+        disposition: `inline; filename="${encodeURIComponent(file.originalName)}"`,
       });
     } catch {
-      throw new NotFoundException(
-        "Stored file could not be found",
-      );
+      throw new NotFoundException("Stored file could not be found");
     }
   }
 
@@ -106,9 +96,6 @@ export class ProductFilesController {
     @Param("productId") productId: string,
     @Param("fileId") fileId: string,
   ) {
-    return this.productFilesService.delete(
-      productId,
-      fileId,
-    );
+    return this.productFilesService.delete(productId, fileId);
   }
 }
