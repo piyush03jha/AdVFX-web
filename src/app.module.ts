@@ -16,6 +16,7 @@ import { UsersModule } from "./users/users.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { CheckoutModule } from "./checkout/checkout.module";
 import { ShippingModule } from "./shipping/shipping.module";
+import { PricingModule } from "./pricing/pricing.module";
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ShippingModule } from "./shipping/shipping.module";
     CustomBuildModule,
     NotificationsModule,
     ShippingModule,
+    PricingModule,
     CheckoutModule,
   ],
   controllers: [AppController],
