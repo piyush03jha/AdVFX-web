@@ -42,6 +42,11 @@ export class CustomBuildController {
     return this.customBuildService.approve(req.user.id, id);
   }
 
+  @Post(':id/add-to-cart')
+  addToCart(@Req() req: any, @Param('id') id: string) {
+    return this.customBuildService.addToCart(req.user.id, id);
+  }
+
   @Post(':id/revision')
   requestRevision(
     @Req() req: any,
