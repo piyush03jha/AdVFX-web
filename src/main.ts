@@ -2,6 +2,7 @@ import "dotenv/config";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
+import { validateEnvironment } from "./config/env.validation";
 import multipart from "@fastify/multipart";
 import {
   FastifyAdapter,
@@ -16,10 +17,12 @@ interface RateLimitState {
 const rateLimitState = new Map<string, RateLimitState>();
 
 async function bootstrap() {
+  const env = validateEnvironment();
+
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
-      logger: process.env.NODE_ENV !== "test",
+      logger: env.nodeEnv !== "test",
     }),
   );
 
@@ -43,7 +46,7 @@ async function bootstrap() {
   app.enableCors({
     origin: process.env.CORS_ORIGINS
       ? process.env.CORS_ORIGINS.split(",").map((value) => value.trim()).filter(Boolean)
-      : process.env.NODE_ENV === "production"
+      : env.nodeEnv === "production"
         ? false
         : true,
     credentials: true,
@@ -71,7 +74,6 @@ async function bootstrap() {
 
       rateLimitState.set(key, next);
 
-      // Bound memory for long-running processes.
       if (rateLimitState.size > 10_000) {
         const cutoff = now - 60_000;
         for (const [stateKey, state] of rateLimitState) {
@@ -104,7 +106,7 @@ async function bootstrap() {
       );
     });
 
-  await app.listen(Number(process.env.PORT ?? 3000), "0.0.0.0");
+  await app.listen(env.port, "0.0.0.0");
 }
 
 bootstrap();
