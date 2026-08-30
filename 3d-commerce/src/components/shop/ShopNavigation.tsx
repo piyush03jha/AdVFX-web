@@ -1,17 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { motion } from "motion/react";
-import {
-  IconAdjustmentsHorizontal,
-  IconDeviceMobile,
-  IconGift,
-  IconSparkles,
-  IconStar,
-  IconSword,
-  IconSwords,
-} from "@tabler/icons-react";
+import { IconLayoutGrid } from "@tabler/icons-react";
 
 interface ShopNavigationProps {
   categories: string[];
@@ -21,148 +10,81 @@ interface ShopNavigationProps {
   activeCategory?: string;
 }
 
-const CATEGORY_ICONS: Record<string, typeof IconSparkles> = {
-  Collectibles: IconSparkles,
-  "Desk Toys": IconGift,
-  Gaming: IconSwords,
-  Custom: IconAdjustmentsHorizontal,
-  Anime: IconStar,
-  Heroes: IconSword,
-  "Mobile / TV": IconDeviceMobile,
-  "Weapon Props": IconSword,
-};
-
-const CATEGORY_SLUGS: Record<string, string> = {
-  Collectibles: "collectibles",
-  "Desk Toys": "desk-toys",
-  Gaming: "gaming",
-  Custom: "custom",
-  Anime: "anime",
-  Heroes: "heroes",
-  "Mobile / TV": "mobile-tv",
-  "Weapon Props": "weapon-props",
-  "Custom Miniatures": "custom-miniatures",
-};
-
 export function ShopNavigation({
   categories,
   selectedCategories,
   onCategoryChange,
   onShowAll,
-  activeCategory,
 }: ShopNavigationProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const allSelected = !activeCategory && selectedCategories.length === 0;
-
-  const handleCategory = (category: string) => {
-    if (activeCategory) {
-      onCategoryChange(category);
-      return;
-    }
-
-    const slug = CATEGORY_SLUGS[category] ?? slugify(category);
-
-    if (pathname === "/shop") {
-      router.push(`/shop/${slug}`);
-      return;
-    }
-
-    onCategoryChange(category);
-  };
+  const isAllActive = selectedCategories.length === 0;
 
   return (
-    <div className="relative">
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        <CategoryButton
-          label="All Models"
-          selected={allSelected}
-          onClick={() => {
-            if (activeCategory) {
-              router.push("/shop");
-            } else {
-              onShowAll();
-            }
-          }}
-          icon={IconSparkles}
-        />
+    <div
+      className="
+        flex
+        gap-2
+        overflow-x-auto
+        px-1
+        pb-1
+        [scrollbar-width:none]
+        [&::-webkit-scrollbar]:hidden
+      "
+    >
+      <NavPill active={isAllActive} onClick={onShowAll}>
+        <IconLayoutGrid size={13} stroke={1.8} />
+        All Models
+      </NavPill>
 
-        {categories.map((category) => {
-          const selected = activeCategory
-            ? activeCategory === category
-            : selectedCategories.includes(category);
-
-          const Icon =
-            CATEGORY_ICONS[category] ?? IconSparkles;
-
-          return (
-            <CategoryButton
-              key={category}
-              label={category}
-              selected={selected}
-              onClick={() => handleCategory(category)}
-              icon={Icon}
-            />
-          );
-        })}
-      </div>
+      {categories.map((category) => (
+        <NavPill
+          key={category}
+          active={selectedCategories.includes(category)}
+          onClick={() => onCategoryChange(category)}
+        >
+          {category}
+        </NavPill>
+      ))}
     </div>
   );
 }
 
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/\s*\/\s*/g, "-")
-    .replace(/\s+/g, "-");
-}
-
-function CategoryButton({
-  label,
-  selected,
+function NavPill({
+  active,
   onClick,
-  icon: Icon,
+  children,
 }: {
-  label: string;
-  selected: boolean;
+  active: boolean;
   onClick: () => void;
-  icon: typeof IconSparkles;
+  children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-[10px] font-medium tracking-[0.08em] transition-colors"
+      className={`
+        flex
+        h-9
+        shrink-0
+        items-center
+        gap-1.5
+        whitespace-nowrap
+        rounded-full
+        border
+        px-4
+        text-[11px]
+        font-medium
+        uppercase
+        tracking-[0.08em]
+        transition-all
+        duration-300
+        ${
+          active
+            ? "border-primary/50 bg-primary/10 text-primary-hover shadow-[0_0_0_1px_rgba(139,92,246,0.15)]"
+            : "border-border bg-surface/30 text-muted hover:border-primary/30 hover:text-foreground"
+        }
+      `}
     >
-      {selected ? (
-        <motion.span
-          layoutId="shop-category-active"
-          className="absolute inset-0 rounded-full bg-primary"
-          transition={{
-            type: "spring",
-            stiffness: 340,
-            damping: 28,
-          }}
-        />
-      ) : (
-        <span className="pointer-events-none absolute inset-0 rounded-full border border-border/80 bg-surface/20 transition-colors group-hover:border-primary/30" />
-      )}
-
-      <Icon
-        size={14}
-        stroke={1.6}
-        className={`relative z-10 ${
-          selected ? "text-white" : "text-muted"
-        }`}
-      />
-
-      <span
-        className={`relative z-10 whitespace-nowrap ${
-          selected ? "text-white" : "text-muted"
-        }`}
-      >
-        {label}
-      </span>
+      {children}
     </button>
   );
 }

@@ -1,152 +1,210 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import {
-  IconArrowLeft,
+  IconCheck,
+  IconChevronRight,
   IconMapPin,
   IconPackage,
-  IconTruck,
 } from "@tabler/icons-react";
 
-import { Navbar } from "@/components/layout/SiteNavbar";
-import { AccountShell } from "@/components/account/AccountShell";
-import { OrderTimeline } from "@/components/account/OrderTimeline";
+import { orders } from "@/config/orders";
 import { OrderItems } from "@/components/account/OrderItems";
 import { OrderSummary } from "@/components/account/OrderSummary";
-import { getOrderById } from "@/config/orders";
+import { Button } from "@/components/ui/Button";
 
-interface OrderPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default async function OrderPage({ params }: OrderPageProps) {
-  const { id } = await params;
-  const order = getOrderById(id);
-
-  if (!order) {
-    notFound();
-  }
+export default function OrderConfirmationPage() {
+  const order = orders[0];
 
   return (
-    <>
-      <Navbar />
-
-      <AccountShell
-        title={order.orderNumber}
-        description={`Placed ${new Date(order.createdAt).toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        })}`}
+    <main className="min-h-screen bg-background">
+      <div
+        className="
+          mx-auto
+          w-full
+          max-w-4xl
+          px-4
+          py-8
+          sm:px-6
+          sm:py-12
+        "
       >
-        <div className="space-y-4 sm:space-y-5 lg:space-y-6">
-          <Link
-            href="/account/orders"
-            className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-foreground"
+        {/* Success */}
+        <section className="text-center">
+          <div
+            className="
+              mx-auto
+              flex
+              h-14
+              w-14
+              items-center
+              justify-center
+              rounded-full
+              border
+              border-primary/30
+              bg-primary/10
+              text-primary
+              shadow-[0_0_35px_var(--glow-primary)]
+            "
           >
-            <IconArrowLeft size={14} />
-            Back to orders
-          </Link>
+            <IconCheck
+              size={26}
+              stroke={1.8}
+            />
+          </div>
 
-          <section className="rounded-2xl border border-border bg-surface/50 p-3.5 sm:p-5">
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-6">
-              <div className="min-w-0">
-                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-primary sm:text-xs">
-                  Shipment
+          <p className="mt-5 text-[9px] uppercase tracking-[0.22em] text-primary">
+            FORMA / ORDER CONFIRMED
+          </p>
+
+          <h1
+            className="
+              mt-2
+              text-2xl
+              font-medium
+              tracking-tight
+              text-foreground
+              sm:text-4xl
+            "
+          >
+            Your order is confirmed.
+          </h1>
+
+          <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-muted sm:text-sm">
+            Thank you for your purchase. We'll keep
+            you updated as your order moves toward
+            delivery.
+          </p>
+
+          <p className="mt-3 text-xs font-medium text-foreground">
+            {order.orderNumber}
+          </p>
+        </section>
+
+        <div className="mt-8 space-y-4 sm:mt-10 sm:space-y-6">
+          {/* Delivery */}
+          <section
+            className="
+              rounded-2xl
+              border
+              border-border
+              bg-surface/50
+              p-4
+              sm:p-5
+            "
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <IconPackage size={17} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] uppercase tracking-[0.14em] text-muted">
+                  Estimated delivery
                 </p>
-                <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-3">
-                  <h2 className="text-base font-semibold text-foreground sm:text-xl">
-                    {order.shipment?.carrier ?? "Preparing shipment"}
-                  </h2>
-                  {order.shipment?.status && (
-                    <span className="rounded-full bg-primary/10 px-2 py-1 text-[9px] font-medium uppercase tracking-[0.08em] text-primary sm:text-[10px]">
-                      {order.shipment.status.replaceAll("_", " ")}
-                    </span>
-                  )}
-                </div>
-                {order.shipment && (
-                  <p className="mt-1 text-xs text-muted sm:text-sm">
-                    Tracking {order.shipment.trackingNumber}
-                  </p>
-                )}
+
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {order.shipment?.estimatedDelivery}
+                </p>
+
+                <p className="mt-1 text-[10px] text-muted">
+                  We'll notify you when your order
+                  ships.
+                </p>
               </div>
 
-              {order.shipment && (
-                <div className="sm:text-right">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted sm:text-xs">
-                    Estimated delivery
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground sm:text-lg">
-                    {order.shipment.estimatedDelivery}
-                  </p>
-                </div>
-              )}
+              <Link
+                href={`/account/orders/${order.id}`}
+                className="
+                  flex
+                  shrink-0
+                  items-center
+                  gap-1
+                  text-[10px]
+                  font-medium
+                  text-primary
+                "
+              >
+                Track
+                <IconChevronRight size={12} />
+              </Link>
             </div>
-
-            {order.shipment && (
-              <div className="mt-5 border-t border-border/60 pt-5 sm:mt-6 sm:pt-6">
-                <OrderTimeline events={order.shipment.events} />
-              </div>
-            )}
           </section>
 
+          {/* Items */}
           <section>
-            <div className="mb-2.5 flex items-center gap-2 sm:mb-3">
-              <IconPackage size={16} className="text-muted" />
-              <h2 className="text-sm font-semibold tracking-tight text-foreground sm:text-base">
-                Items
+            <div className="mb-3 flex items-center gap-2">
+              <IconPackage
+                size={15}
+                className="text-muted"
+              />
+
+              <h2 className="text-xs font-medium uppercase tracking-[0.12em]">
+                Your order
               </h2>
             </div>
+
             <OrderItems items={order.items} />
           </section>
 
-          <div className="grid gap-3 lg:grid-cols-2 lg:gap-5">
-            <section className="rounded-2xl border border-border bg-surface/50 p-3.5 sm:p-5">
+          {/* Bottom */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section
+              className="
+                rounded-2xl
+                border
+                border-border
+                bg-surface/50
+                p-4
+                sm:p-5
+              "
+            >
               <div className="flex items-center gap-2">
-                <IconMapPin size={16} className="text-muted" />
-                <h2 className="text-sm font-semibold text-foreground sm:text-base">
-                  Delivery address
+                <IconMapPin
+                  size={15}
+                  className="text-muted"
+                />
+
+                <h2 className="text-xs font-medium uppercase tracking-[0.12em]">
+                  Delivering to
                 </h2>
               </div>
 
-              <div className="mt-3 text-xs leading-5 sm:mt-4 sm:text-sm sm:leading-6">
-                <p className="font-medium text-foreground">{order.shippingAddress.name}</p>
-                <p className="text-muted">{order.shippingAddress.addressLine1}</p>
-                {order.shippingAddress.addressLine2 && (
-                  <p className="text-muted">{order.shippingAddress.addressLine2}</p>
-                )}
-                <p className="text-muted">
-                  {order.shippingAddress.city}, {order.shippingAddress.state}
+              <div className="mt-3 text-xs leading-5">
+                <p className="font-medium text-foreground">
+                  {order.shippingAddress.name}
                 </p>
-                <p className="text-muted">{order.shippingAddress.postalCode}</p>
-                <p className="mt-1.5 text-muted">{order.shippingAddress.phone}</p>
+
+                <p className="text-muted">
+                  {order.shippingAddress.city},{" "}
+                  {order.shippingAddress.state}
+                </p>
+
+                <p className="text-muted">
+                  {order.shippingAddress.country}
+                </p>
               </div>
             </section>
 
             <OrderSummary order={order} />
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            {order.shipment?.trackingUrl && (
-              <a
-                href={order.shipment.trackingUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-white shadow-[0_0_24px_var(--glow-primary)] hover:bg-primary-hover"
-              >
-                <IconTruck size={17} />
-                Track shipment
-              </a>
-            )}
+          {/* Actions */}
+          <div
+            className="
+              grid
+              gap-2
+              sm:grid-cols-2
+            "
+          >
+            <Button href={`/account/orders/${order.id}`} size="md">
+              Track order
+            </Button>
 
-            <Link
-              href="/account/orders"
-              className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm font-medium text-foreground hover:bg-surface-elevated"
-            >
-              View all orders
-            </Link>
+            <Button href="/shop" variant="outline" size="md">
+              Continue shopping
+            </Button>
           </div>
         </div>
-      </AccountShell>
-    </>
+      </div>
+    </main>
   );
 }

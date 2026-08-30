@@ -127,7 +127,7 @@ export function AddressManager({
           <button
             type="button"
             onClick={openAdd}
-            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-[10px] font-medium uppercase tracking-[0.08em] text-white hover:bg-primary-hover"
+            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 text-[10px] font-medium uppercase tracking-[0.08em] text-white hover:bg-primary-hover"
           >
             <IconPlus size={14} />
             <span className="hidden sm:inline">Add address</span>
@@ -151,7 +151,7 @@ export function AddressManager({
           <IconMapPin size={22} className="mx-auto text-muted" />
           <p className="mt-3 text-sm font-medium text-foreground">No saved addresses</p>
           <p className="mt-1 text-xs text-muted">Add an address so checkout is faster next time.</p>
-          <button type="button" onClick={openAdd} className="mt-4 rounded-lg border border-primary/40 px-4 py-2 text-xs font-medium text-primary hover:bg-primary/10">
+          <button type="button" onClick={openAdd} className="mt-4 rounded-full border border-primary/40 px-4 py-2 text-xs font-medium text-primary hover:bg-primary/10">
             Add your first address
           </button>
         </div>
@@ -216,7 +216,7 @@ export function AddressManager({
                     <button
                       type="button"
                       onClick={() => onSelect?.(address)}
-                      className={`flex min-h-9 flex-1 items-center justify-center gap-2 rounded-lg text-xs font-medium ${selected ? "bg-primary text-white" : "border border-border text-foreground hover:border-primary/50"}`}
+                      className={`flex min-h-9 flex-1 items-center justify-center gap-2 rounded-full text-xs font-medium ${selected ? "bg-primary text-white" : "border border-border text-foreground hover:border-primary/50"}`}
                     >
                       {selected && <IconCheck size={14} />}
                       {selected ? "Selected" : "Use this address"}
@@ -287,8 +287,8 @@ function AddressForm({
       </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <button type="button" onClick={onCancel} className="min-h-10 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-surface-elevated">Cancel</button>
-        <button type="submit" className="min-h-10 rounded-lg bg-primary text-xs font-medium text-white hover:bg-primary-hover">{editing ? "Save changes" : "Add address"}</button>
+        <button type="button" onClick={onCancel} className="min-h-10 rounded-full border border-border text-xs font-medium text-foreground hover:bg-surface-elevated">Cancel</button>
+        <button type="submit" className="min-h-10 rounded-full bg-primary text-xs font-medium text-white hover:bg-primary-hover">{editing ? "Save changes" : "Add address"}</button>
       </div>
     </form>
   );

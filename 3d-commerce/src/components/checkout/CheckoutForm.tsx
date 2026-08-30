@@ -12,6 +12,7 @@ import {
 
 import { COUNTRIES, type CountryCode } from "@/config/countries";
 import { SavedAddressSelector } from "@/components/checkout/SavedAddressSelector";
+import { Button } from "@/components/ui/Button";
 import { useAddresses, type Address } from "@/context/AddressContext";
 
 interface CheckoutFormProps {
@@ -361,40 +362,18 @@ export function CheckoutForm({
           </div>
         </div>
 
-        <button
+        <Button
           type="submit"
-          disabled={
-            saving ||
-            !selectedAddress ||
-            !isLoaded
-          }
-          className="
-            mt-4
-            flex
-            min-h-12
-            w-full
-            items-center
-            justify-center
-            gap-2
-            rounded-xl
-            bg-primary
-            px-5
-            text-sm
-            font-medium
-            text-white
-            transition-colors
-            hover:bg-primary-hover
-            disabled:cursor-not-allowed
-            disabled:opacity-50
-            sm:min-h-13
-          "
+          size="lg"
+          disabled={saving || !selectedAddress || !isLoaded}
+          className="mt-4 w-full"
         >
           {saving
             ? "Opening payment…"
             : selectedAddress
               ? "Continue to payment"
               : "Select a delivery address"}
-        </button>
+        </Button>
       </section>
     </form>
   );
