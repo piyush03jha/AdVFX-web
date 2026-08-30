@@ -11,6 +11,7 @@ import { CategoriesModule } from "./categories/categories.module";
 import { CartModule } from "./cart/cart.module";
 import { OrdersModule } from "./orders/orders.module";
 import { ShipmentsModule } from "./shipments/shipments.module";
+import { CustomBuildModule } from "./custom-build/custom-build.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ShipmentsModule } from "./shipments/shipments.module";
     CartModule,
     OrdersModule,
     ShipmentsModule,
+    CustomBuildModule,
   ],
   controllers: [AppController],
   providers: [AppService],
