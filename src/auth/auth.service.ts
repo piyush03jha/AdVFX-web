@@ -2,7 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { timingSafeEqual, randomUUID } from 'node:crypto';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from './auth.types';
@@ -13,13 +13,9 @@ interface AuthSession {
   expiresAt: Date;
 }
 
-/**
- * Backend authentication foundation.
- *
- * Tokens are intentionally kept in-process for this first backend slice.
- * When Redis is introduced for queues, session persistence should move there
- * without changing the controller/guard contract.
- */
+const MAX_SESSION_COUNT = 10_000;
+const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
+
 @Injectable()
 export class AuthService {
   private readonly sessions = new Map<string, AuthSession>();
@@ -33,7 +29,7 @@ export class AuthService {
       throw new Error('ADMIN_AUTH_SECRET is not configured');
     }
 
-    if (secret !== expectedSecret) {
+    if (!safeSecretEqual(secret, expectedSecret)) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -53,13 +49,13 @@ export class AuthService {
     }
 
     const token = randomUUID();
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 12);
+    const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
-    this.sessions.set(token, {
-      token,
-      userId: user.id,
-      expiresAt,
-    });
+    if (this.sessions.size >= MAX_SESSION_COUNT) {
+      this.pruneExpiredSessions();
+    }
+
+    this.sessions.set(token, { token, userId: user.id, expiresAt });
 
     return {
       token,
@@ -69,6 +65,10 @@ export class AuthService {
   }
 
   async authenticate(token: string): Promise<AuthenticatedUser> {
+    if (!token || token.length > 128 || !/^[0-9a-f-]{36}$/i.test(token)) {
+      throw new UnauthorizedException('Invalid or expired session');
+    }
+
     const session = this.sessions.get(token);
 
     if (!session || session.expiresAt <= new Date()) {
@@ -87,7 +87,7 @@ export class AuthService {
       },
     });
 
-    if (!user || !user.isActive) {
+    if (!user || !user.isActive || user.role !== ('ADMIN' as UserRole)) {
       this.sessions.delete(token);
       throw new UnauthorizedException('User account is inactive');
     }
@@ -98,6 +98,13 @@ export class AuthService {
   logout(token: string) {
     this.sessions.delete(token);
     return { message: 'Signed out successfully' };
+  }
+
+  private pruneExpiredSessions() {
+    const now = new Date();
+    for (const [token, session] of this.sessions) {
+      if (session.expiresAt <= now) this.sessions.delete(token);
+    }
   }
 
   private serializeUser(user: {
@@ -113,4 +120,12 @@ export class AuthService {
       role: user.role,
     };
   }
+}
+
+function safeSecretEqual(input: string, expected: string) {
+  const inputBuffer = Buffer.from(input, 'utf8');
+  const expectedBuffer = Buffer.from(expected, 'utf8');
+
+  if (inputBuffer.length !== expectedBuffer.length) return false;
+  return timingSafeEqual(inputBuffer, expectedBuffer);
 }
