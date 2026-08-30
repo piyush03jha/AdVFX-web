@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CustomRequestStatus, Prisma } from '@prisma/client';
+import { CustomRequestStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomRequestDto } from './dto/create-custom-request.dto';
 
@@ -46,7 +46,7 @@ export class CustomBuildService {
   async mine(userId: string) {
     return this.prisma.customRequest.findMany({
       where: { userId },
-      include: { media: true, preview: true, quote: true },
+      include: { media: true, preview: { include: { productFile: true } }, quote: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -54,7 +54,13 @@ export class CustomBuildService {
   async mineOne(userId: string, id: string) {
     const request = await this.prisma.customRequest.findFirst({
       where: { id, userId },
-      include: { media: true, preview: true, quote: true, previewProduct: { include: { files: true, media: true } } },
+      include: {
+        media: true,
+        preview: { include: { productFile: true } },
+        quote: true,
+        revisions: true,
+        previewProduct: { include: { files: true, media: true, prices: true } },
+      },
     });
     if (!request) throw new NotFoundException('Custom request not found');
     return request;
@@ -63,7 +69,14 @@ export class CustomBuildService {
   async findAllAdmin(status?: CustomRequestStatus) {
     return this.prisma.customRequest.findMany({
       where: status ? { status } : undefined,
-      include: { user: true, media: true, preview: true, quote: true, previewProduct: { include: { files: true, media: true } } },
+      include: {
+        user: true,
+        media: true,
+        preview: { include: { productFile: true } },
+        quote: true,
+        revisions: true,
+        previewProduct: { include: { files: true, media: true, prices: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -71,7 +84,14 @@ export class CustomBuildService {
   async findOneAdmin(id: string) {
     const request = await this.prisma.customRequest.findUnique({
       where: { id },
-      include: { user: true, media: true, preview: true, quote: true, previewProduct: { include: { files: true, media: true } } },
+      include: {
+        user: true,
+        media: true,
+        preview: { include: { productFile: true } },
+        quote: true,
+        revisions: true,
+        previewProduct: { include: { files: true, media: true, prices: true } },
+      },
     });
     if (!request) throw new NotFoundException('Custom request not found');
     return request;
@@ -86,7 +106,14 @@ export class CustomBuildService {
     return this.prisma.customRequest.update({
       where: { id },
       data: { status },
-      include: { user: true, media: true, preview: true, quote: true, previewProduct: true },
+      include: {
+        user: true,
+        media: true,
+        preview: { include: { productFile: true } },
+        quote: true,
+        revisions: true,
+        previewProduct: true,
+      },
     });
   }
 
@@ -105,16 +132,55 @@ export class CustomBuildService {
     return preview;
   }
 
+  async linkProcessedPreview(customRequestId: string, productFileId: string) {
+    await this.findOneAdmin(customRequestId);
+    const file = await this.prisma.productFile.findUnique({
+      where: { id: productFileId },
+      select: { id: true, storageUrl: true, processingStatus: true },
+    });
+
+    if (!file) throw new NotFoundException('Preview file not found');
+    if (file.processingStatus !== 'COMPLETED') {
+      throw new BadRequestException('Preview file is not processed yet');
+    }
+    if (!file.storageUrl) {
+      throw new BadRequestException('Processed preview file has no storage URL');
+    }
+
+    return this.prisma.customRequestPreview.upsert({
+      where: { customRequestId },
+      create: {
+        customRequestId,
+        productFileId: file.id,
+        url: file.storageUrl,
+        status: 'READY',
+      },
+      update: {
+        productFileId: file.id,
+        url: file.storageUrl,
+        status: 'READY',
+      },
+    });
+  }
+
   async approve(userId: string, id: string) {
     const request = await this.mineOne(userId, id);
+
     if (!['CUSTOMER_REVIEW', 'PREVIEW_READY'].includes(request.status)) {
       throw new BadRequestException('Custom model is not ready for approval');
     }
-    return this.prisma.customRequest.update({
+
+    if (!request.preview?.url) {
+      throw new BadRequestException('A 3D preview is required before approval');
+    }
+
+    await this.prisma.customRequest.update({
       where: { id },
       data: { status: 'APPROVED' },
-      include: { media: true, preview: true, quote: true, previewProduct: true },
     });
+
+    await this.makeOrderable(id);
+    return this.mineOne(userId, id);
   }
 
   async requestRevision(userId: string, id: string, note?: string) {
@@ -122,12 +188,17 @@ export class CustomBuildService {
     if (!['CUSTOMER_REVIEW', 'PREVIEW_READY'].includes(request.status)) {
       throw new BadRequestException('Custom model is not ready for revision');
     }
+
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.customRequest.update({
         where: { id },
-        data: { status: 'REVISION_REQUESTED' },
-        include: { media: true, preview: true, quote: true, previewProduct: true },
+        data: {
+          status: 'REVISION_REQUESTED',
+          revisionCount: { increment: 1 },
+        },
+        include: { media: true, preview: true, quote: true },
       });
+
       if (note?.trim()) {
         await tx.customRequestRevision.create({
           data: { customRequestId: id, requestedById: userId, note: note.trim() },
@@ -159,5 +230,66 @@ export class CustomBuildService {
       data: { previewProductId: product.id },
     });
     return product.id;
+  }
+
+  private async makeOrderable(id: string) {
+    const request = await this.prisma.customRequest.findUnique({
+      where: { id },
+      include: { preview: true, quote: true },
+    });
+
+    if (!request || request.status !== 'APPROVED' || !request.preview || !request.quote) {
+      return;
+    }
+
+    const previewProductId = request.previewProductId ?? await this.ensurePreviewProduct(id);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.product.update({
+        where: { id: previewProductId },
+        data: {
+          name: request.title,
+          description: request.requirements,
+          status: 'ACTIVE',
+          material: request.preferredMaterial,
+          scale: request.preferredScale,
+          dimensions: request.dimensions,
+        },
+      });
+
+      await tx.productPrice.updateMany({
+        where: { productId: previewProductId, isActive: true },
+        data: { isActive: false },
+      });
+
+      await tx.productPrice.create({
+        data: {
+          productId: previewProductId,
+          currency: request.quote!.currency,
+          amountMinor: request.quote!.amountMinor,
+          isActive: true,
+        },
+      });
+
+      await tx.productMedia.updateMany({
+        where: { productId: previewProductId, type: 'MODEL_PREVIEW', isPrimary: true },
+        data: { isPrimary: false },
+      });
+
+      await tx.productMedia.create({
+        data: {
+          productId: previewProductId,
+          type: 'MODEL_PREVIEW',
+          url: request.preview!.url,
+          isPrimary: true,
+          sortOrder: 0,
+        },
+      });
+
+      await tx.customRequest.update({
+        where: { id },
+        data: { status: 'ORDERABLE', previewProductId },
+      });
+    });
   }
 }
