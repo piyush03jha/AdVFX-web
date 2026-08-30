@@ -76,6 +76,66 @@ export interface AdminProduct {
   }>;
 }
 
+export interface AdminOrder {
+  id: string;
+  orderNumber: string;
+  status: string;
+  currency: string;
+  subtotalMinor: number;
+  discountMinor: number;
+  shippingMinor: number;
+  taxMinor: number;
+  totalMinor: number;
+  appliedCouponCode: string | null;
+  createdAt: string;
+  user: { id: string; email: string; name: string | null } | null;
+  shippingAddress: {
+    fullName: string;
+    phone: string;
+    line1: string;
+    line2: string | null;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  } | null;
+  items: Array<{
+    id: string;
+    productName: string;
+    quantity: number;
+    unitPriceMinor: number;
+    totalPriceMinor: number;
+  }>;
+  payment: { status: string; provider: string; amountMinor: number } | null;
+  shipment: {
+    status: string;
+    carrier: string | null;
+    trackingNumber: string | null;
+    trackingUrl: string | null;
+  } | null;
+  inventoryReservations: Array<{
+    quantity: number;
+    status: string;
+    expiresAt: string;
+  }>;
+}
+
+export interface AdminReturnRequest {
+  id: string;
+  status: string;
+  reason: string;
+  note: string | null;
+  resolutionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+  order: { id: string; orderNumber: string; totalMinor: number; currency: string };
+  user: { id: string; email: string; name: string | null };
+}
+
+export interface AdminInventoryProduct extends AdminProduct {
+  inventory: NonNullable<AdminProduct["inventory"]>;
+}
+
 interface RequestOptions extends RequestInit {
   token?: string;
 }
@@ -97,9 +157,7 @@ async function request<T>(path: string, options: RequestOptions = {}) {
 
   if (!response.ok) {
     const message =
-      typeof body?.message === "string"
-        ? body.message
-        : "Request failed";
+      typeof body?.message === "string" ? body.message : "Request failed";
 
     throw new Error(message);
   }
@@ -218,24 +276,18 @@ export async function uploadProductFile(
     `${API_BASE_URL}/products/${productId}/files`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
       body: formData,
       cache: "no-store",
     },
   );
 
   const body = await response.json().catch(() => null);
-
   if (!response.ok) {
-    const message =
-      typeof body?.message === "string"
-        ? body.message
-        : "File upload failed";
-    throw new Error(message);
+    throw new Error(
+      typeof body?.message === "string" ? body.message : "File upload failed",
+    );
   }
-
   return body as AdminProductFile;
 }
 
@@ -250,10 +302,7 @@ export function deleteProductFile(
 ) {
   return request<{ message: string }>(
     `/products/${productId}/files/${fileId}`,
-    {
-      method: "DELETE",
-      token,
-    },
+    { method: "DELETE", token },
   );
 }
 
@@ -285,5 +334,51 @@ export function deleteCategory(token: string, id: string) {
   return request<{ message: string }>(`/categories/${id}`, {
     method: "DELETE",
     token,
-    });
+  });
+}
+
+export function getAdminOrders(token: string, status?: string) {
+  const suffix = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request<AdminOrder[]>(`/orders/admin/list${suffix}`, { token });
+}
+
+export function getAdminOrder(token: string, id: string) {
+  return request<AdminOrder>(`/orders/admin/${id}`, { token });
+}
+
+export function updateAdminOrderStatus(
+  token: string,
+  id: string,
+  status: string,
+) {
+  return request<AdminOrder>(`/orders/admin/${id}/status`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function getAdminReturns(token: string, status?: string) {
+  const suffix = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request<AdminReturnRequest[]>(`/orders/admin/returns${suffix}`, { token });
+}
+
+export function updateAdminReturn(
+  token: string,
+  id: string,
+  status: string,
+  resolutionNote?: string,
+) {
+  return request<AdminReturnRequest>(`/orders/admin/returns/${id}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ status, resolutionNote }),
+  });
+}
+
+export function getAdminInventory(token: string) {
+  return request<AdminInventoryProduct[]>(
+    "/products?includeArchived=true&includeInventory=true",
+    { token },
+  );
 }
