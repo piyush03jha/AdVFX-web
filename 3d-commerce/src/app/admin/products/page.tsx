@@ -3,11 +3,15 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import {
+  addProductMedia,
   archiveProduct,
   createProduct,
   getCategories,
   getProducts,
+  removeProductMedia,
+  setProductPrice,
   updateProduct,
+  updateProductInventory,
   type AdminCategory,
   type AdminProduct,
 } from "@/lib/admin-api";
@@ -33,6 +37,8 @@ const emptyForm = {
   lowStockAt: "5",
   price: "",
   compareAt: "",
+  imageUrl: "",
+  modelPreviewUrl: "",
 };
 
 type ProductForm = typeof emptyForm;
@@ -90,6 +96,13 @@ export default function AdminProductsPage() {
 
   const openEdit = (product: AdminProduct) => {
     const currentPrice = product.prices.find((price) => price.isActive);
+    const primaryImage = product.media.find(
+      (media) => media.type === "IMAGE" && media.isPrimary,
+    ) ?? product.media.find((media) => media.type === "IMAGE");
+    const modelPreview = product.media.find(
+      (media) => media.type === "MODEL_PREVIEW",
+    );
+
     setSelected(product);
     setForm({
       name: product.name,
@@ -114,13 +127,72 @@ export default function AdminProductsPage() {
       compareAt: currentPrice?.compareAtMinor
         ? String(currentPrice.compareAtMinor / 100)
         : "",
+      imageUrl: primaryImage?.url ?? "",
+      modelPreviewUrl: modelPreview?.url ?? "",
     });
     setError(null);
     setNotice(null);
   };
 
-  const updateField = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
+  const updateField = <K extends keyof ProductForm>(
+    key: K,
+    value: ProductForm[K],
+  ) => {
     setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const refreshProduct = (saved: AdminProduct) => {
+    setProducts((current) => {
+      const existing = current.some((item) => item.id === saved.id);
+      return existing
+        ? current.map((item) => (item.id === saved.id ? saved : item))
+        : [saved, ...current];
+    });
+    setSelected(saved);
+  };
+
+  const syncMedia = async (product: AdminProduct) => {
+    if (!token) return product;
+
+    const currentImage = product.media.find(
+      (media) => media.type === "IMAGE" && media.isPrimary,
+    ) ?? product.media.find((media) => media.type === "IMAGE");
+    const currentModel = product.media.find(
+      (media) => media.type === "MODEL_PREVIEW",
+    );
+
+    let latest = product;
+
+    if (form.imageUrl.trim() && form.imageUrl.trim() !== currentImage?.url) {
+      latest = await addProductMedia(token, product.id, {
+        type: "IMAGE",
+        url: form.imageUrl.trim(),
+        isPrimary: true,
+        sortOrder: 0,
+      });
+    } else if (!form.imageUrl.trim() && currentImage) {
+      latest = await removeProductMedia(token, latest.id, currentImage.id);
+    }
+
+    const refreshedModel = latest.media.find(
+      (media) => media.type === "MODEL_PREVIEW",
+    ) ?? currentModel;
+
+    if (
+      form.modelPreviewUrl.trim() &&
+      form.modelPreviewUrl.trim() !== refreshedModel?.url
+    ) {
+      latest = await addProductMedia(token, product.id, {
+        type: "MODEL_PREVIEW",
+        url: form.modelPreviewUrl.trim(),
+        isPrimary: true,
+        sortOrder: 0,
+      });
+    } else if (!form.modelPreviewUrl.trim() && refreshedModel) {
+      latest = await removeProductMedia(token, latest.id, refreshedModel.id);
+    }
+
+    return latest;
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -161,31 +233,40 @@ export default function AdminProductsPage() {
         base: form.base.trim() || undefined,
         packaging: form.packaging.trim() || undefined,
         weight: form.weight.trim() || undefined,
-        stock: Math.max(0, Number(form.stock) || 0),
-        lowStockAt: Math.max(0, Number(form.lowStockAt) || 0),
       };
 
-      const saved = selected
+      let saved = selected
         ? await updateProduct(token, selected.id, payload)
-        : await createProduct(token, payload);
-
-      setProducts((current) => {
-        const existing = current.some((item) => item.id === saved.id);
-        return existing
-          ? current.map((item) => (item.id === saved.id ? saved : item))
-          : [saved, ...current];
-      });
+        : await createProduct(token, {
+            ...payload,
+            stock: Math.max(0, Number(form.stock) || 0),
+            lowStockAt: Math.max(0, Number(form.lowStockAt) || 0),
+          });
 
       if (selected) {
-        setNotice("Product updated successfully.");
-      } else {
-        setNotice("Product created successfully.");
-        setSelected(saved);
+        saved = await updateProductInventory(token, saved.id, {
+          stock: Math.max(0, Number(form.stock) || 0),
+          lowStockAt: Math.max(0, Number(form.lowStockAt) || 0),
+        });
       }
 
-      if (amountMinor >= 0) {
-        void compareAtMinor;
+      if (
+        amountMinor !==
+        (saved.prices.find((price) => price.isActive)?.amountMinor ?? null)
+        || compareAtMinor !==
+        (saved.prices.find((price) => price.isActive)?.compareAtMinor ?? null)
+      ) {
+        saved = await setProductPrice(token, saved.id, {
+          currency: "INR",
+          amountMinor,
+          compareAtMinor,
+          isActive: true,
+        });
       }
+
+      saved = await syncMedia(saved);
+      refreshProduct(saved);
+      setNotice(selected ? "Product updated successfully." : "Product created successfully.");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unable to save product");
     } finally {
@@ -205,7 +286,9 @@ export default function AdminProductsPage() {
         ),
       );
       if (selected?.id === product.id) {
-        setSelected((current) => (current ? { ...current, status: "ARCHIVED" } : current));
+        setSelected((current) =>
+          current ? { ...current, status: "ARCHIVED" } : current,
+        );
       }
       setNotice("Product archived.");
     } catch (err: unknown) {
@@ -221,7 +304,7 @@ export default function AdminProductsPage() {
             <p className="text-[10px] uppercase tracking-[0.2em] text-primary">Catalog</p>
             <h1 className="mt-2 font-serif text-3xl tracking-[-0.03em] sm:text-4xl">Products</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted">
-              Manage physical products, storefront merchandising, pricing and inventory from one place.
+              Manage physical products, pricing, inventory, images and 3D previews.
             </p>
           </div>
           <button
@@ -280,7 +363,10 @@ export default function AdminProductsPage() {
                         </span>
                       </span>
                       <Status value={product.status} />
-                      <span className="text-sm">{product.inventory?.stock ?? 0}</span>
+                      <span className="text-sm">
+                        {product.inventory?.stock ?? 0}
+                        {product.inventory && product.inventory.reserved > 0 ? ` (${product.inventory.reserved} reserved)` : ""}
+                      </span>
                       <span className="text-sm">
                         {currentPrice
                           ? `${currentPrice.currency} ${(currentPrice.amountMinor / 100).toLocaleString("en-IN")}`
@@ -322,11 +408,9 @@ export default function AdminProductsPage() {
               <Field label="Name">
                 <input value={form.name} onChange={(e) => updateField("name", e.target.value)} required className={inputClass} placeholder="Cyberpunk Warrior" />
               </Field>
-
               <Field label="Slug">
                 <input value={form.slug} onChange={(e) => updateField("slug", e.target.value)} required className={inputClass} placeholder="cyberpunk-warrior" />
               </Field>
-
               <Field label="Description">
                 <textarea value={form.description} onChange={(e) => updateField("description", e.target.value)} className={`${inputClass} min-h-28 rounded-2xl py-3`} placeholder="Describe the physical product…" />
               </Field>
@@ -335,9 +419,7 @@ export default function AdminProductsPage() {
                 <Field label="Category">
                   <select value={form.categoryId} onChange={(e) => updateField("categoryId", e.target.value)} className={inputClass}>
                     <option value="">Uncategorized</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>{category.name}</option>
-                    ))}
+                    {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                   </select>
                 </Field>
                 <Field label="Status">
@@ -356,9 +438,6 @@ export default function AdminProductsPage() {
                 <Field label="Compare-at price (INR)">
                   <input value={form.compareAt} onChange={(e) => updateField("compareAt", e.target.value)} type="number" min="0" step="0.01" className={inputClass} placeholder="1999" />
                 </Field>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Stock">
                   <input value={form.stock} onChange={(e) => updateField("stock", e.target.value)} type="number" min="0" step="1" className={inputClass} />
                 </Field>
@@ -385,6 +464,21 @@ export default function AdminProductsPage() {
               </Field>
 
               <div>
+                <p className="text-xs font-medium text-foreground">Product media</p>
+                <div className="mt-3 space-y-4">
+                  <Field label="Primary image URL">
+                    <input value={form.imageUrl} onChange={(e) => updateField("imageUrl", e.target.value)} type="url" className={inputClass} placeholder="https://cdn.example.com/product.webp" />
+                  </Field>
+                  <Field label="3D preview GLB URL">
+                    <input value={form.modelPreviewUrl} onChange={(e) => updateField("modelPreviewUrl", e.target.value)} type="url" className={inputClass} placeholder="https://cdn.example.com/product.glb" />
+                  </Field>
+                </div>
+                <p className="mt-2 text-[11px] leading-5 text-muted">
+                  These assets power the storefront and interactive viewer. They are not customer downloads.
+                </p>
+              </div>
+
+              <div>
                 <p className="text-xs font-medium text-foreground">Merchandising</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   <Toggle label="Featured" value={form.isFeatured} onChange={(value) => updateField("isFeatured", value)} />
@@ -400,10 +494,6 @@ export default function AdminProductsPage() {
               >
                 {saving ? "Saving…" : selected ? "Save changes" : "Create product"}
               </button>
-
-              <p className="text-[11px] leading-5 text-muted">
-                Product images and the interactive 3D preview are managed as media assets. They are not customer downloads.
-              </p>
             </form>
           </aside>
         </div>
