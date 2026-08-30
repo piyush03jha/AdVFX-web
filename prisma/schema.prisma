@@ -298,6 +298,7 @@ model CustomRequest {
   referenceFileCount Int @default(0)
   status CustomRequestStatus @default(SUBMITTED)
   revisionCount Int @default(0)
+  previewProductId String?
   media CustomRequestMedia[]
   preview CustomRequestPreview?
   quote CustomRequestQuote?
@@ -329,6 +330,8 @@ model CustomRequestPreview {
   id String @id @default(cuid())
   customRequestId String @unique
   customRequest CustomRequest @relation(fields: [customRequestId], references: [id], onDelete: Cascade)
+  productFileId String? @unique
+  productFile ProductFile? @relation(fields: [productFileId], references: [id], onDelete: SetNull)
   url String
   status CustomPreviewStatus @default(PROCESSING)
   createdAt DateTime @default(now())
@@ -380,6 +383,7 @@ model ProductFile {
   convertedFiles ProductFile[] @relation("ConvertedFiles")
   processingJobs ProductFileProcessingJob[]
   generatedByJob ProductFileProcessingJob? @relation("ProcessingJobOutput")
+  customPreview CustomRequestPreview?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([productId])
