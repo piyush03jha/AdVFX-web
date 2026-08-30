@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import type { MutableRefObject } from "react";
 
 import type { HeroProduct } from "@/config/hero-products";
 import {
@@ -47,7 +48,8 @@ function CardModel({ product, index, total, mobile }: CardModelProps) {
   }, [scene]);
 
   useFrame(({ clock }, delta) => {
-    if (!groupRef.current) return;
+    const group = groupRef.current;
+    if (!group) return;
 
     const config = mobile ? HERO_PARALLAX.mobile : HERO_PARALLAX.desktop;
     const centered = index - (total - 1) / 2;
@@ -65,9 +67,9 @@ function CardModel({ product, index, total, mobile }: CardModelProps) {
     const targetZ = depth * 0.018 - abs * 0.6;
     const idleFloat = Math.sin(clock.getElapsedTime() * 0.55 + index * 0.55) * (mobile ? 0.018 : 0.03);
 
-    groupRef.current.position.x = THREE.MathUtils.damp(groupRef.current.position.x, targetX, 7, delta);
-    groupRef.current.position.y = THREE.MathUtils.damp(groupRef.current.position.y, targetY + idleFloat, 7, delta);
-    groupRef.current.position.z = THREE.MathUtils.damp(groupRef.current.position.z, targetZ, 7, delta);
+    group.position.x = THREE.MathUtils.damp(group.position.x, targetX, 7, delta);
+    group.position.y = THREE.MathUtils.damp(group.position.y, targetY + idleFloat, 7, delta);
+    group.position.z = THREE.MathUtils.damp(group.position.z, targetZ, 7, delta);
 
     const yRotation = THREE.MathUtils.lerp(
       config.sideRotationY,
@@ -77,14 +79,14 @@ function CardModel({ product, index, total, mobile }: CardModelProps) {
     const sideSign = normalized >= 0 ? -1 : 1;
     const zRotation = THREE.MathUtils.lerp(0.38, -0.38, (normalized + 1) / 2);
 
-    groupRef.current.rotation.y = THREE.MathUtils.damp(
-      groupRef.current.rotation.y,
+    group.rotation.y = THREE.MathUtils.damp(
+      group.rotation.y,
       THREE.MathUtils.degToRad(yRotation * sideSign),
       7,
       delta,
     );
-    groupRef.current.rotation.z = THREE.MathUtils.damp(
-      groupRef.current.rotation.z,
+    group.rotation.z = THREE.MathUtils.damp(
+      group.rotation.z,
       zRotation + THREE.MathUtils.degToRad(wave * 0.045),
       7,
       delta,
@@ -107,7 +109,7 @@ function ParallaxScene({
   stageElementRef,
 }: {
   products: HeroProduct[];
-  stageElementRef: React.MutableRefObject<HTMLDivElement | null>;
+  stageElementRef: MutableRefObject<HTMLDivElement | null>;
 }) {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null);
@@ -116,12 +118,11 @@ function ParallaxScene({
   const mobileRef = useRef(false);
 
   useEffect(() => {
-    mobileRef.current = window.innerWidth < 768;
-
     const updateViewport = () => {
       mobileRef.current = window.innerWidth < 768;
     };
 
+    updateViewport();
     window.addEventListener("resize", updateViewport, { passive: true });
     return () => window.removeEventListener("resize", updateViewport);
   }, []);
@@ -151,10 +152,10 @@ function ParallaxScene({
   }, [stageElementRef]);
 
   useFrame((_, delta) => {
-    if (!groupRef.current) return;
+    const group = groupRef.current;
+    if (!group) return;
 
-    const mobile = mobileRef.current;
-    const config = mobile ? HERO_PARALLAX.mobile : HERO_PARALLAX.desktop;
+    const config = mobileRef.current ? HERO_PARALLAX.mobile : HERO_PARALLAX.desktop;
     scrollProgress.current = THREE.MathUtils.damp(
       scrollProgress.current,
       targetProgress.current,
@@ -167,20 +168,10 @@ function ParallaxScene({
     const drift = signed * config.scrollDrift * 0.006;
     const lift = Math.sin(progress * Math.PI) * config.scrollAmplitude * 0.009;
 
-    groupRef.current.position.x = THREE.MathUtils.damp(
-      groupRef.current.position.x,
-      drift,
-      7,
-      delta,
-    );
-    groupRef.current.position.y = THREE.MathUtils.damp(
-      groupRef.current.position.y,
-      -lift,
-      7,
-      delta,
-    );
-    groupRef.current.rotation.z = THREE.MathUtils.damp(
-      groupRef.current.rotation.z,
+    group.position.x = THREE.MathUtils.damp(group.position.x, drift, 7, delta);
+    group.position.y = THREE.MathUtils.damp(group.position.y, -lift, 7, delta);
+    group.rotation.z = THREE.MathUtils.damp(
+      group.rotation.z,
       THREE.MathUtils.degToRad(signed * config.scrollTilt),
       7,
       delta,
@@ -188,7 +179,7 @@ function ParallaxScene({
 
     camera.position.z = THREE.MathUtils.damp(
       camera.position.z,
-      mobile ? 10.5 : 13,
+      mobileRef.current ? 10.5 : 13,
       5,
       delta,
     );
