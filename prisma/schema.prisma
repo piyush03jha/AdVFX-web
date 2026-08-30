@@ -24,6 +24,7 @@ model User {
   customRequests CustomRequest[]
   customRequestRevisions CustomRequestRevision[]
   notifications Notification[]
+  returnRequests ReturnRequest[]
 }
 
 enum UserRole { CUSTOMER ADMIN }
@@ -88,6 +89,7 @@ model Product {
   cartItems CartItem[]
   orderItems OrderItem[]
   customPreviewRequests CustomRequest[] @relation("CustomPreviewProduct")
+  inventoryReservations InventoryReservation[]
   createdById String?
   createdBy User? @relation("ProductCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById String?
@@ -136,14 +138,18 @@ model ProductInventory {
 model InventoryReservation {
   id String @id @default(cuid())
   productId String
+  productInventoryId String?
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productInventory ProductInventory? @relation(fields: [productInventoryId], references: [id], onDelete: Cascade)
   orderId String
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
   quantity Int
   status InventoryReservationStatus @default(ACTIVE)
   expiresAt DateTime
   consumedAt DateTime?
   releasedAt DateTime?
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   @@index([status, expiresAt])
   @@index([orderId])
   @@index([productId])
@@ -229,6 +235,7 @@ model Order {
   payment Payment?
   shipment Shipment?
   inventoryReservations InventoryReservation[]
+  returnRequest ReturnRequest?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([userId])
@@ -236,7 +243,16 @@ model Order {
   @@index([createdAt])
 }
 
-enum OrderStatus { PENDING_PAYMENT CONFIRMED PROCESSING DELIVERED SHIPPED CANCELLED REFUNDED }
+enum OrderStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  PROCESSING
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
 
 model OrderItem {
   id String @id @default(cuid())
@@ -289,6 +305,24 @@ model Shipment {
 }
 
 enum ShipmentStatus { PENDING LABEL_CREATED SHIPPED IN_TRANSIT DELIVERED EXCEPTION }
+
+model ReturnRequest {
+  id String @id @default(cuid())
+  orderId String @unique
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status ReturnRequestStatus @default(REQUESTED)
+  reason String
+  note String?
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+enum ReturnRequestStatus { REQUESTED APPROVED REJECTED RECEIVED REFUNDED }
 
 model CustomRequest {
   id String @id @default(cuid())
