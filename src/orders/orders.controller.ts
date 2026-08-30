@@ -1,6 +1,18 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Patch,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '../auth/guards/auth.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { AdminOrderListDto } from './dto/admin-order-list.dto';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrdersService } from './orders.service';
 
 @UseGuards(AuthGuard)
@@ -21,5 +33,23 @@ export class OrdersController {
   @Get(':id')
   findOne(@Req() req: any, @Param('id') id: string) {
     return this.ordersService.findOne(req.user.id, id);
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('admin/list')
+  findAllAdmin(@Req() req: any, @Body() _body: AdminOrderListDto) {
+    return this.ordersService.findAllAdmin(_body.status);
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('admin/:id')
+  findOneAdmin(@Param('id') id: string) {
+    return this.ordersService.findOneAdmin(id);
+  }
+
+  @UseGuards(AdminGuard)
+  @Patch('admin/:id/status')
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
+    return this.ordersService.updateStatus(id, dto.status);
   }
 }
