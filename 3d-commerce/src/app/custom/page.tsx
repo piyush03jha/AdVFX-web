@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
@@ -16,7 +16,32 @@ export default function CustomBuildPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+
+  function onFilesChange(event: ChangeEvent<HTMLInputElement>) {
+    setFiles(Array.from(event.target.files ?? []));
+  }
+
+  async function uploadReferenceFiles(requestId: string, token: string) {
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`${API_BASE_URL}/custom-requests/${requestId}/files`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          typeof body?.message === "string"
+            ? body.message
+            : `Unable to upload ${file.name}`,
+        );
+      }
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,16 +75,18 @@ export default function CustomBuildPage() {
       const body = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(
-          typeof body?.message === "string" ? body.message : "Unable to submit request",
+          typeof body?.message === "string"
+            ? body.message
+            : "Unable to submit request",
         );
       }
 
-      setSuccess(true);
-      if (body?.id) {
-        router.push(`/custom/${body.id}`);
-      }
+      await uploadReferenceFiles(body.id, token);
+      router.push(`/custom/${body.id}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Unable to submit request");
+      setError(
+        err instanceof Error ? err.message : "Unable to submit request",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -100,7 +127,7 @@ export default function CustomBuildPage() {
                 type="file"
                 multiple
                 accept="image/jpeg,image/png,image/webp,application/pdf"
-                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+                onChange={onFilesChange}
                 className="block w-full text-xs text-muted file:mr-3 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-xs file:font-medium file:text-white"
               />
               <p className="mt-2 text-[11px] text-muted">Selected: {files.length}</p>
@@ -112,10 +139,9 @@ export default function CustomBuildPage() {
           </Field>
 
           {error && <p className="rounded-2xl border border-red-400/20 bg-red-400/[0.05] px-4 py-3 text-sm text-red-200">{error}</p>}
-          {success && <p className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.05] px-4 py-3 text-sm text-emerald-200">Request submitted.</p>}
 
           <button type="submit" disabled={submitting} className="min-h-12 w-full rounded-full bg-primary px-6 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50">
-            {submitting ? "Submitting…" : "Send custom build request"}
+            {submitting ? "Submitting and uploading…" : "Send custom build request"}
           </button>
         </form>
       </div>
