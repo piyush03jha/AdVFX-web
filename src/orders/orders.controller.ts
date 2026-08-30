@@ -22,7 +22,11 @@ export class OrdersController {
 
   @Post()
   create(@Req() req: any, @Body() dto: CreateOrderDto) {
-    return this.ordersService.createFromCart(req.user.id, dto.shippingAddressId);
+    return this.ordersService.createFromCart(
+      req.user.id,
+      dto.shippingAddressId,
+      dto.couponCode,
+    );
   }
 
   @Get()
