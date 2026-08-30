@@ -1,8 +1,8 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateOrderDto {
   @IsString()
-  @IsUUID()
+  @IsNotEmpty()
   shippingAddressId: string;
 
   @IsOptional()
