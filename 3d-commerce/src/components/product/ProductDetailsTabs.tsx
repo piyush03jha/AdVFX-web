@@ -119,7 +119,7 @@ export function ProductDetailsTabs({
 
       {/* ==================================================
           CONTENT
-      ================================================== */}
+      ================================================== */
 
       <div className="px-5 py-6 sm:px-7 sm:py-7 lg:px-9 lg:py-8">
         {activeTab === "description" && (
@@ -147,7 +147,7 @@ function Description({
     <div className="max-w-4xl">
       {/* ==================================================
           DESCRIPTION
-      ================================================== */}
+      ================================================== */
 
       <p
         className="
@@ -171,10 +171,9 @@ function Description({
           sm:text-[15px]
         "
       >
-        Built for modern real-time 3D
-        workflows, this asset is designed
-        to be easy to preview, download,
-        and integrate into your projects.
+        Designed for premium physical display and
+        made to bring the visualized model to life
+        as a tangible product.
       </p>
 
       {/* ==================================================
