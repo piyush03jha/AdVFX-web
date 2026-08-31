@@ -10,9 +10,17 @@ import {
 
 const CARD_COUNT = 40;
 const TOTAL_TWIST = 180;
+const CARD_WIDTH = 240;
+const CARD_HEIGHT = 138;
+const CARD_SPACING = 0.96;
 
-const CARD_ANGLE_OVERRIDES: Partial<Record<number, number>> = {};
-const CARD_TILT_OVERRIDES: Partial<Record<number, number>> = {};
+// Set any card's X/Y/Z rotation independently.
+// X = tilt toward/away from camera
+// Y = left/right twist
+// Z = roll
+const CARD_ROTATION_OVERRIDES: Partial<
+  Record<number, { x?: number; y?: number; z?: number }>
+> = {};
 
 const COLOR_STOPS: Array<[number, number, number]> = [
   [43, 18, 46],
@@ -40,10 +48,10 @@ function lerpColor(t: number) {
 function pathY(t: number, h: number) {
   return (
     h / 2 -
-    60 +
-    78 * Math.sin(t * Math.PI * 2 * 1.05 + 0.5) +
-    14 * Math.sin(t * Math.PI * 2 * 3.1 + 1.1) +
-    t * 100
+    34 +
+    120 * Math.sin(t * Math.PI * 2 * 1.05 + 0.5) +
+    25 * Math.sin(t * Math.PI * 2 * 3.1 + 1.1) +
+    t * 80
   );
 }
 
@@ -51,8 +59,9 @@ interface CardGeometry {
   x: number;
   y: number;
   z: number;
-  twist: number;
-  tilt: number;
+  rotateX: number;
+  rotateY: number;
+  rotateZ: number;
 }
 
 export function HeroProductStage() {
@@ -84,26 +93,39 @@ export function HeroProductStage() {
         const t = i / (CARD_COUNT - 1);
         const y = pathY(t, h);
         const dt = 0.001;
-        const yNext = pathY(t + dt, h);
+        const yNext = pathY(Math.min(t + dt, 1), h);
         const slope = (yNext - y) / (dt * w);
         const bank = Math.max(
-          -18,
-          Math.min(18, Math.atan(slope) * (180 / Math.PI) * 0.5),
+          -20,
+          Math.min(20, Math.atan(slope) * (180 / Math.PI) * 0.55),
         );
 
+        const normalized = t * 2 - 1;
+        const abs = Math.abs(normalized);
+        const override = CARD_ROTATION_OVERRIDES[i];
+
+        const automaticRotateY =
+          i * twistPerCard +
+          Math.sin(t * Math.PI * 2) * 8;
+        const automaticRotateX = bank + Math.sin(t * Math.PI * 2.5) * 4;
+        const automaticRotateZ =
+          Math.sin(t * Math.PI * 2 * 1.15) * 10 - normalized * 4;
+
         return {
-          x: t * w,
+          x:
+            t * w * CARD_SPACING +
+            (w * (1 - CARD_SPACING)) / 2,
           y,
-          z: 170 - 340 * t,
-          twist: CARD_ANGLE_OVERRIDES[i] ?? i * twistPerCard,
-          tilt: CARD_TILT_OVERRIDES[i] ?? bank,
+          z: 290 - 580 * t - abs * 70,
+          rotateX: override?.x ?? automaticRotateX,
+          rotateY: override?.y ?? automaticRotateY,
+          rotateZ: override?.z ?? automaticRotateZ,
         };
       });
     }
 
     layout();
     window.addEventListener("resize", layout);
-
     return () => window.removeEventListener("resize", layout);
   }, [cards]);
 
@@ -115,13 +137,15 @@ export function HeroProductStage() {
       const geo = geometry.current[i];
       if (!el || !geo) return;
 
-      const idleY = 12 * Math.sin(time * 1.1 - card.phase);
-      const idleTwist = 4 * Math.sin(time * 0.9 - card.phase * 0.8);
+      const idleY = 16 * Math.sin(time * 1.05 - card.phase);
+      const idleTwist = 4 * Math.sin(time * 0.82 - card.phase * 0.8);
+      const idleRoll = 2.5 * Math.sin(time * 0.72 - card.phase * 0.55);
 
       el.style.transform =
         `translate3d(${geo.x}px, ${geo.y + idleY}px, ${geo.z}px) ` +
-        `rotateY(${geo.twist + idleTwist}deg) ` +
-        `rotateX(${geo.tilt}deg)`;
+        `rotateX(${geo.rotateX}deg) ` +
+        `rotateY(${geo.rotateY + idleTwist}deg) ` +
+        `rotateZ(${geo.rotateZ + idleRoll}deg)`;
     });
   });
 
@@ -130,10 +154,12 @@ export function HeroProductStage() {
     offset: ["start start", "end start"],
   });
 
-  const groupY = useTransform(scrollYProgress, [0, 1], [0, -420]);
+  const groupY = useTransform(scrollYProgress, [0, 1], [0, -460]);
+  const groupX = useTransform(scrollYProgress, [0, 1], [0, 40]);
+  const groupRotateZ = useTransform(scrollYProgress, [0, 1], [0, -4]);
   const groupOpacity = useTransform(
     scrollYProgress,
-    [0, 0.85, 1],
+    [0, 0.86, 1],
     [1, 1, 0],
   );
 
@@ -144,12 +170,14 @@ export function HeroProductStage() {
       >
         <div
           ref={stageRef}
-          className="relative h-[420px] w-[min(92vw,1080px)]"
-          style={{ perspective: 900 }}
+          className="relative h-[520px] w-screen"
+          style={{ perspective: 1100 }}
         >
           <motion.div
             style={{
+              x: groupX,
               y: groupY,
+              rotateZ: groupRotateZ,
               opacity: groupOpacity,
               transformStyle: "preserve-3d",
             }}
@@ -161,11 +189,18 @@ export function HeroProductStage() {
                 ref={(node) => {
                   cardRefs.current[i] = node;
                 }}
-                className="absolute left-0 top-0 -ml-[50px] -mt-7 h-14 w-[100px] rounded-md"
+                className="absolute left-0 top-0 rounded-2xl border border-white/10"
                 style={{
+                  width: CARD_WIDTH,
+                  height: CARD_HEIGHT,
+                  marginLeft: -CARD_WIDTH / 2,
+                  marginTop: -CARD_HEIGHT / 2,
+                  transformStyle: "preserve-3d",
                   background:
-                    "linear-gradient(115deg, rgba(255,255,255,0.28), rgba(255,255,255,0) 40%, rgba(0,0,0,0.35)), " +
+                    "linear-gradient(115deg, rgba(255,255,255,0.32), rgba(255,255,255,0) 40%, rgba(0,0,0,0.34)), " +
                     card.color,
+                  boxShadow:
+                    "0 24px 70px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.12)",
                 }}
               />
             ))}
