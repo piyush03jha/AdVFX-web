@@ -58,7 +58,7 @@ function HeroCard({
             alt={product.name}
             loading="eager"
             decoding="async"
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
           />
         </div>
       </div>
@@ -83,10 +83,7 @@ function CenterCard({
       transition={{ duration: 1.35, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
       className="absolute left-1/2 top-1/2 z-20 h-[66svh] w-[min(38vw,360px)] min-w-[220px] max-w-[390px] -translate-x-1/2 -translate-y-1/2"
     >
-      <motion.div
-        style={{ y: scrollY, scale }}
-        className="h-full w-full"
-      >
+      <motion.div style={{ y: scrollY, scale }} className="h-full w-full">
         <div className="h-full w-full overflow-hidden rounded-[24px] bg-white p-2 shadow-[0_35px_100px_rgba(0,0,0,0.34)] sm:rounded-[30px] sm:p-3">
           <div className="relative h-full w-full overflow-hidden rounded-[19px] bg-white sm:rounded-[24px]">
             <img
@@ -95,7 +92,7 @@ function CenterCard({
               loading="eager"
               decoding="async"
               fetchPriority="high"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain"
             />
           </div>
         </div>
@@ -152,7 +149,9 @@ export function HeroParallax() {
   const leftFirst = heroProducts[1];
   const rightFirst = heroProducts[2];
   const leftSecond = heroProducts[3];
-  const rightSecond = heroProducts[1];
+  // The repository currently has four unique hero images. Use the first image
+  // as the temporary fifth visual slot until the client supplies a fifth asset.
+  const rightSecond = heroProducts[0];
 
   return (
     <section
@@ -179,7 +178,7 @@ export function HeroParallax() {
         <CenterCard product={heroProducts[0]} progress={smooth} />
 
         <div
-          className="absolute inset-0 z-30 transition-opacity duration-200"
+          className="absolute inset-0 z-30 transition-opacity duration-150"
           style={{ opacity: firstPairOpacity }}
           aria-hidden={firstPairOpacity < 0.5}
         >
@@ -188,7 +187,7 @@ export function HeroParallax() {
         </div>
 
         <div
-          className="absolute inset-0 z-[25] transition-opacity duration-200"
+          className="absolute inset-0 z-[25] transition-opacity duration-150"
           style={{ opacity: secondPairOpacity }}
           aria-hidden={secondPairOpacity < 0.5}
         >
