@@ -5,29 +5,45 @@ import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { IconShoppingCart } from "@tabler/icons-react";
 
 import { heroProducts } from "@/config/hero-products";
+import { trendingProducts } from "@/config/trending-products";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Price } from "@/components/ui/Price";
 
-const SCROLL_HEIGHT = "390svh";
+const SCROLL_HEIGHT = "520svh";
 const IMAGE_WIDTH = "clamp(74px, 17vw, 250px)";
 const IMAGE_HEIGHT = "clamp(150px, 31.9vw, 500px)";
 const PRODUCT_GAP = "clamp(5px, 0.8vw, 12px)";
+const HERO_POSITIONS = [-35, -17.5, 0, 17.5, 35] as const;
+const CONTINUATION_START = 0.84;
+const CONTINUATION_END = 1;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
-const FINAL_X = [-35, -17.5, 0, 17.5, 35] as const;
+const firstFive = [
+  heroProducts[2],
+  heroProducts[3],
+  heroProducts[0],
+  heroProducts[1],
+  heroProducts[2],
+];
+
+const nextFive = trendingProducts.slice(0, 5);
+
+type StageProduct = (typeof firstFive)[number];
+type NextProduct = (typeof nextFive)[number];
+type ProductLike = StageProduct | NextProduct;
 
 function ProductInfoCard({
   product,
   progress,
 }: {
-  product: (typeof heroProducts)[number];
+  product: ProductLike;
   progress: ReturnType<typeof useMotionValue<number>>;
 }) {
-  const reveal = useTransform(progress, [0.84, 0.96], [0, 1]);
+  const reveal = useTransform(progress, [0.78, 0.89], [0, 1]);
   const y = useTransform(reveal, [0, 1], [120, 0]);
   const opacity = useTransform(reveal, [0, 0.25, 1], [0, 0.55, 1]);
 
@@ -47,22 +63,14 @@ function ProductInfoCard({
                 {product.name}
               </h3>
             </div>
-            <Badge
-              variant="default"
-              className="shrink-0 border-black/10 bg-black/[0.04] text-[7px] text-black/55 sm:text-[8px]"
-            >
+            <Badge variant="default" className="shrink-0 border-black/10 bg-black/[0.04] text-[7px] text-black/55 sm:text-[8px]">
               3D
             </Badge>
           </div>
 
           <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-black/10 pt-2.5 sm:mt-3 sm:pt-3">
             <Price value={product.price} size="sm" />
-            <Button
-              type="button"
-              size="sm"
-              variant="primary"
-              className="h-7 px-2 text-[8px] sm:h-8 sm:px-2.5 sm:text-[9px]"
-            >
+            <Button type="button" size="sm" variant="primary" className="h-7 px-2 text-[8px] sm:h-8 sm:px-2.5 sm:text-[9px]">
               <IconShoppingCart size={12} />
               Add to Cart
             </Button>
@@ -76,82 +84,39 @@ function ProductInfoCard({
 function HeroProduct({
   product,
   progress,
-  side,
-  depth,
-  finalIndex,
+  index,
 }: {
-  product: (typeof heroProducts)[number];
+  product: StageProduct;
   progress: ReturnType<typeof useMotionValue<number>>;
-  side: "left" | "right";
-  depth: "inner" | "outer" | "center";
-  finalIndex: number;
+  index: number;
 }) {
+  const side = index < 2 ? "left" : index > 2 ? "right" : "center";
   const isLeft = side === "left";
-  const isOuter = depth === "outer";
-  const isCenter = depth === "center";
+  const isOuter = index === 0 || index === 4;
+  const isCenter = index === 2;
   const direction = isLeft ? -1 : 1;
 
   const start = isCenter ? 0 : isOuter ? 0.30 : 0.045;
   const end = isCenter ? 0.08 : isOuter ? 0.58 : 0.25;
   const initialX = isCenter ? 0 : isOuter ? 35 : 18;
   const initialY = isCenter ? 0 : isOuter ? -5 : -40;
-  const initialWidth = isCenter
-    ? "clamp(92px, 24vw, 360px)"
-    : "clamp(70px, 15vw, 270px)";
+  const initialWidth = isCenter ? "clamp(92px, 24vw, 360px)" : "clamp(70px, 15vw, 270px)";
 
   const reveal = useTransform(progress, [start, end], [0, 1]);
-  const fanX = useTransform(
-    reveal,
-    [0, 0.55, 1],
-    [0, direction * 2, direction * initialX],
-  );
-  const fanY = useTransform(
-    reveal,
-    [0, 0.55, 1],
-    [0, isOuter ? 0 : -5, initialY],
-  );
+  const fanX = useTransform(reveal, [0, 0.55, 1], [0, direction * 2, direction * initialX]);
+  const fanY = useTransform(reveal, [0, 0.55, 1], [0, isOuter ? 0 : -5, initialY]);
 
-  // The fan is the first composition. From the white-stage transition onward
-  // every product gets the exact same image footprint and an evenly spaced slot.
-  const x = useTransform(
-    () =>
-      progress.get() < 0.78
-        ? `${fanX.get()}vw`
-        : `${FINAL_X[finalIndex]}vw`,
-  );
-  const y = useTransform(
-    () =>
-      progress.get() < 0.78
-        ? `${fanY.get()}px`
-        : "-20px",
-  );
-  const width = useTransform(
-    progress,
-    [0.76, 0.94],
-    [initialWidth, IMAGE_WIDTH],
-  );
-  const height = IMAGE_HEIGHT;
-  const scale = useTransform(progress, [0.76, 0.94], [1, 1]);
-  const opacity = useTransform(reveal, [0, 0.1, 0.45, 1], [0, 0.5, 0.9, 1]);
+  const x = useTransform(progress, (value) => {
+    if (value < 0.78) return `${fanX.get()}vw`;
+    const continuation = clamp((value - CONTINUATION_START) / (CONTINUATION_END - CONTINUATION_START), 0, 1);
+    return `${HERO_POSITIONS[index] - continuation * 100}vw`;
+  });
 
-  const chromeOpacity = useTransform(
-    progress,
-    [0.62, 0.76, 0.88],
-    [1, 0.35, 0],
-  );
-  const imageInset = useTransform(
-    progress,
-    [0.62, 0.88],
-    [isCenter ? "8px" : "6px", "0px"],
-  );
-
-  // Perspective is useful for the black fan, but the final white editorial row
-  // is front-facing so all five image slots have the same visible dimensions.
-  const rotateY = useTransform(
-    progress,
-    [0, end, 0.88, 0.94],
-    [0, isLeft ? 20 : -20, isLeft ? 20 : -20, 0],
-  );
+  const y = useTransform(progress, (value) => (value < 0.78 ? `${fanY.get()}px` : "-20px"));
+  const width = useTransform(progress, [0.76, 0.94], [initialWidth, IMAGE_WIDTH]);
+  const chromeOpacity = useTransform(progress, [0.62, 0.76, 0.88], [1, 0.35, 0]);
+  const imageInset = useTransform(progress, [0.62, 0.88], [isCenter ? "8px" : "6px", "0px"]);
+  const rotateY = useTransform(progress, [0, end, 0.88, 0.94], [0, isLeft ? 20 : -20, isLeft ? 20 : -20, 0]);
 
   return (
     <motion.article
@@ -159,9 +124,9 @@ function HeroProduct({
         x,
         y,
         width,
-        height,
-        scale,
-        opacity,
+        height: IMAGE_HEIGHT,
+        scale: 1,
+        opacity: reveal,
         rotateY,
         zIndex: isCenter ? 20 : isOuter ? 10 : 15,
         transformPerspective: 1200,
@@ -170,29 +135,42 @@ function HeroProduct({
       }}
       className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
     >
-      <motion.div
-        aria-hidden="true"
-        className="absolute inset-0 overflow-hidden rounded-[16px] bg-white shadow-[0_25px_70px_rgba(0,0,0,0.34)] sm:rounded-[22px]"
-        style={{ opacity: chromeOpacity }}
-      />
-
-      <motion.div
-        className="absolute inset-0 overflow-visible"
-        style={{ padding: imageInset }}
-      >
+      <motion.div aria-hidden="true" className="absolute inset-0 overflow-hidden rounded-[16px] bg-white shadow-[0_25px_70px_rgba(0,0,0,0.34)] sm:rounded-[22px]" style={{ opacity: chromeOpacity }} />
+      <motion.div className="absolute inset-0 overflow-visible" style={{ padding: imageInset }}>
         <div className="h-full w-full overflow-hidden rounded-[12px] sm:rounded-[17px]">
-          <img
-            src={product.image ?? product.model}
-            alt={product.name}
-            loading="eager"
-            decoding="async"
-            fetchPriority={isCenter ? "high" : undefined}
-            className="h-full w-full object-contain"
-          />
+          <img src={product.image ?? product.model} alt={product.name} loading="eager" decoding="async" fetchPriority={isCenter ? "high" : undefined} className="h-full w-full object-contain" />
         </div>
-
         <ProductInfoCard product={product} progress={progress} />
       </motion.div>
+    </motion.article>
+  );
+}
+
+function ContinuationProduct({
+  product,
+  progress,
+  index,
+}: {
+  product: NextProduct;
+  progress: ReturnType<typeof useMotionValue<number>>;
+  index: number;
+}) {
+  const entryX = 115 + index * 17.5;
+  const xValue = useTransform(progress, [CONTINUATION_START, CONTINUATION_END], [entryX, HERO_POSITIONS[index]]);
+  const x = useTransform(xValue, (value) => `${value}vw`);
+  const yValue = useTransform(progress, [CONTINUATION_START, 0.94, CONTINUATION_END], [55, 10, -20]);
+  const y = useTransform(yValue, (value) => `${value}px`);
+  const opacity = useTransform(progress, [0.84, 0.89, 0.97, 1], [0, 0.35, 1, 1]);
+
+  return (
+    <motion.article
+      style={{ x, y, width: IMAGE_WIDTH, height: IMAGE_HEIGHT, opacity, zIndex: 8 }}
+      className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+    >
+      <div className="h-full w-full overflow-hidden rounded-[12px] bg-white sm:rounded-[17px]">
+        <img src={product.image} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+      </div>
+      <ProductInfoCard product={product} progress={progress} />
     </motion.article>
   );
 }
@@ -200,34 +178,25 @@ function HeroProduct({
 export function HeroParallax() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const progress = useMotionValue(0);
-  const smooth = useSpring(progress, {
-    stiffness: 105,
-    damping: 26,
-    mass: 0.7,
-  });
+  const smooth = useSpring(progress, { stiffness: 105, damping: 26, mass: 0.7 });
 
   useEffect(() => {
     let frame = 0;
-
     const update = () => {
       frame = 0;
       const section = sectionRef.current;
       if (!section) return;
-
       const rect = section.getBoundingClientRect();
       const distance = Math.max(section.offsetHeight - window.innerHeight, 1);
       progress.set(clamp(-rect.top / distance, 0, 1));
     };
-
     const onScroll = () => {
       if (frame) return;
       frame = window.requestAnimationFrame(update);
     };
-
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
-
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
@@ -235,64 +204,29 @@ export function HeroParallax() {
     };
   }, [progress]);
 
-  const whiteStageY = useTransform(
-    smooth,
-    [0.58, 0.72, 0.86],
-    ["100%", "42%", "0%"],
-  );
+  const whiteStageY = useTransform(smooth, [0.58, 0.72, 0.86], ["100%", "42%", "0%"]);
   const whiteStageOpacity = useTransform(smooth, [0.58, 0.64], [0, 1]);
 
-  // Keep five slots in the hero itself. Once the five production images are
-  // supplied, only these product records/assets need to change.
-  const products = [
-    heroProducts[2],
-    heroProducts[3],
-    heroProducts[0],
-    heroProducts[1],
-    heroProducts[2],
-  ];
-
   return (
-    <section
-      ref={sectionRef}
-      aria-label="Featured 3D collection"
-      className="relative bg-black text-white"
-      style={{ minHeight: SCROLL_HEIGHT }}
-    >
+    <section ref={sectionRef} aria-label="Featured 3D collection" className="relative bg-black text-white" style={{ minHeight: SCROLL_HEIGHT }}>
       <div className="sticky top-0 h-[100svh] overflow-hidden bg-black">
         <div className="absolute inset-0 bg-black" />
-
-        <motion.div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-full bg-white"
-          style={{ y: whiteStageY, opacity: whiteStageOpacity }}
-        />
+        <motion.div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-full bg-white" style={{ y: whiteStageY, opacity: whiteStageOpacity }} />
 
         <div className="absolute inset-x-0 top-0 z-40 flex items-start justify-between px-5 pt-6 sm:px-8 sm:pt-8 lg:px-12 lg:pt-10">
-          <p className="max-w-[280px] text-[8px] uppercase leading-[1.55] tracking-[0.13em] text-white/55 sm:text-[9px] lg:max-w-[340px]">
-            A new language of digital fashion — designed to move like a campaign, not a carousel.
-          </p>
-          <h1 className="max-w-[360px] text-right text-[clamp(24px,3.2vw,48px)] font-light uppercase leading-[0.9] tracking-[-0.055em] sm:max-w-[500px]">
-            DESIGNED TO MAKE
-            <br />
-            <span className="italic">AN ENTRANCE.</span>
-          </h1>
+          <p className="max-w-[280px] text-[8px] uppercase leading-[1.55] tracking-[0.13em] text-white/55 sm:text-[9px] lg:max-w-[340px]">A new language of digital fashion — designed to move like a campaign, not a carousel.</p>
+          <h1 className="max-w-[360px] text-right text-[clamp(24px,3.2vw,48px)] font-light uppercase leading-[0.9] tracking-[-0.055em] sm:max-w-[500px]">DESIGNED TO MAKE<br /><span className="italic">AN ENTRANCE.</span></h1>
         </div>
 
-        <HeroProduct product={products[0]} progress={smooth} side="left" depth="outer" finalIndex={0} />
-        <HeroProduct product={products[1]} progress={smooth} side="left" depth="inner" finalIndex={1} />
-        <HeroProduct product={products[2]} progress={smooth} side="left" depth="center" finalIndex={2} />
-        <HeroProduct product={products[3]} progress={smooth} side="right" depth="inner" finalIndex={3} />
-        <HeroProduct product={products[4]} progress={smooth} side="right" depth="outer" finalIndex={4} />
+        {firstFive.map((product, index) => <HeroProduct key={`hero-${product.id}-${index}`} product={product} progress={smooth} index={index} />)}
+        {nextFive.map((product, index) => <ContinuationProduct key={`continuation-${product.id}`} product={product} progress={smooth} index={index} />)}
 
         <div className="absolute bottom-6 left-5 right-5 z-40 flex items-end justify-between sm:bottom-8 sm:left-8 sm:right-8 lg:left-12 lg:right-12">
           <div>
             <p className="text-[8px] uppercase tracking-[0.22em] text-white/40 sm:text-[9px]">Scroll to explore</p>
-            <div className="mt-2 h-px w-24 overflow-hidden bg-white/15 sm:w-32">
-              <motion.div style={{ scaleX: smooth }} className="h-full origin-left bg-white" />
-            </div>
+            <div className="mt-2 h-px w-24 overflow-hidden bg-white/15 sm:w-32"><motion.div style={{ scaleX: smooth }} className="h-full origin-left bg-white" /></div>
           </div>
-          <p className="text-[8px] uppercase tracking-[0.2em] text-white/35 sm:text-[9px]">ZEVANA / 01 — 05</p>
+          <p className="text-[8px] uppercase tracking-[0.2em] text-white/35 sm:text-[9px]">ZEVANA / 01 — 10</p>
         </div>
       </div>
     </section>
