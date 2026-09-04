@@ -25,20 +25,21 @@ function HeroCard({
   const isOuter = depth === "outer";
   const direction = isLeft ? -1 : 1;
 
-  // Cards begin behind the center and fan outward into the 5 — 4 — center — 2 — 3 layout.
+  // Side cards are intentionally smaller than the center card so all four
+  // surrounding cards can sit comfortably inside the viewport.
   const start = isOuter ? 0.30 : 0.045;
   const end = isOuter ? 0.58 : 0.25;
-  const finalX = isOuter ? 44 : 22;
+  const finalX = isOuter ? 40 : 20;
   const finalY = isOuter ? 8 : -15;
 
   const reveal = useTransform(progress, [start, end], [0, 1]);
-  const x = useTransform(reveal, [0, 0.55, 1], [0, direction * 5, direction * finalX]);
+  const x = useTransform(reveal, [0, 0.55, 1], [0, direction * 4, direction * finalX]);
   const y = useTransform(reveal, [0, 0.55, 1], [0, isOuter ? 0 : -6, finalY]);
-  const scale = useTransform(reveal, [0, 0.35, 1], [0.86, 0.96, 1]);
+  const scale = useTransform(reveal, [0, 0.35, 1], [0.78, 0.9, 1]);
   const opacity = useTransform(reveal, [0, 0.1, 0.45, 1], [0, 0.5, 0.9, 1]);
 
-  // Y-axis perspective tilt: vertical edges remain parallel. The left card
-  // turns toward the center with positive rotateY; the right card with negative rotateY.
+  // Y-axis perspective tilt: the vertical edges stay parallel. Each card
+  // turns inward in depth toward the center instead of rotating diagonally.
   const rotateY = useTransform(
     reveal,
     [0, 0.35, 1],
@@ -58,10 +59,10 @@ function HeroCard({
         transformStyle: "preserve-3d",
         transformOrigin: "50% 50%",
       }}
-      className="pointer-events-none absolute left-1/2 top-1/2 w-[clamp(92px,24vw,360px)] -translate-x-1/2 -translate-y-1/2"
+      className="pointer-events-none absolute left-1/2 top-1/2 w-[clamp(58px,15vw,230px)] -translate-x-1/2 -translate-y-1/2"
     >
-      <div className="aspect-[3/4] w-full overflow-hidden rounded-[20px] bg-white p-2 shadow-[0_35px_100px_rgba(0,0,0,0.34)] sm:rounded-[28px] sm:p-3">
-        <div className="h-full w-full overflow-hidden rounded-[15px] bg-white sm:rounded-[22px]">
+      <div className="aspect-[3/4] w-full overflow-hidden rounded-[16px] bg-white p-1.5 shadow-[0_25px_70px_rgba(0,0,0,0.34)] sm:rounded-[22px] sm:p-2">
+        <div className="h-full w-full overflow-hidden rounded-[12px] bg-white sm:rounded-[17px]">
           <img
             src={product.image ?? product.model}
             alt={product.name}
