@@ -6,6 +6,7 @@ import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { heroProducts } from "@/config/hero-products";
 
 const SCROLL_HEIGHT = "360svh";
+const CARD_HEIGHT = "clamp(123px, 31.9vw, 480px)";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -28,24 +29,33 @@ function HeroCard({
   const start = isOuter ? 0.30 : 0.045;
   const end = isOuter ? 0.58 : 0.25;
 
-  // Keep the side-card HEIGHT identical to the center card.
-  // Only the WIDTH is reduced so all four cards fit in the viewport.
+  // Side cards use the same HEIGHT as the center card.
+  // Their WIDTH is intentionally smaller to create the fan composition.
   const sideWidth = "clamp(58px, 15vw, 230px)";
-  const cardHeight = "clamp(123px, 31.9vw, 480px)";
 
-  // Tight composition: inner cards overlap the center slightly and the
-  // outer cards stay close behind them instead of leaving large gaps.
-  const finalX = isOuter ? 29 : 17;
-  const finalY = isOuter ? 8 : -15;
+  // Equal visual gaps: outer cards sit one side-card width + the same gap
+  // beyond the inner cards, producing 5 — 4 — CENTER — 2 — 3.
+  const finalX = isOuter ? 37.5 : 21;
+  const finalY = isOuter ? -5 : -15;
 
   const reveal = useTransform(progress, [start, end], [0, 1]);
-  const x = useTransform(reveal, [0, 0.55, 1], [0, direction * 2, direction * finalX]);
-  const y = useTransform(reveal, [0, 0.55, 1], [0, isOuter ? 0 : -5, finalY]);
+  const xValue = useTransform(
+    reveal,
+    [0, 0.55, 1],
+    [0, direction * 2, direction * finalX],
+  );
+  const yValue = useTransform(
+    reveal,
+    [0, 0.55, 1],
+    [0, isOuter ? 0 : -5, finalY],
+  );
+  const x = useTransform(xValue, (value) => `${value}vw`);
+  const y = useTransform(yValue, (value) => `${value}px`);
   const scale = useTransform(reveal, [0, 0.35, 1], [0.78, 0.9, 1]);
   const opacity = useTransform(reveal, [0, 0.1, 0.45, 1], [0, 0.5, 0.9, 1]);
 
-  // Y-axis perspective tilt: vertical edges remain parallel and the cards
-  // face inward toward the center without a diagonal 2D rotation.
+  // Y-axis perspective tilt: vertical edges remain parallel and each card
+  // faces inward toward the center without a diagonal 2D rotation.
   const rotateY = useTransform(
     reveal,
     [0, 0.35, 1],
@@ -55,10 +65,10 @@ function HeroCard({
   return (
     <motion.article
       style={{
-        x: useTransform(x, (value) => `${value}vw`),
-        y: useTransform(y, (value) => `${value}px`),
+        x,
+        y,
         width: sideWidth,
-        height: cardHeight,
+        height: CARD_HEIGHT,
         scale,
         opacity,
         rotateY,
@@ -100,9 +110,10 @@ function CenterCard({
       animate={{ y: 0, opacity: 1, scale: 1 }}
       transition={{ duration: 1.45, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
       className="absolute left-1/2 top-1/2 z-20 w-[clamp(92px,24vw,360px)] -translate-x-1/2 -translate-y-1/2"
+      style={{ height: CARD_HEIGHT }}
     >
-      <motion.div style={{ y: scrollY, scale }} className="w-full">
-        <div className="aspect-[3/4] w-full overflow-hidden rounded-[20px] bg-white p-2 shadow-[0_35px_100px_rgba(0,0,0,0.4)] sm:rounded-[28px] sm:p-3">
+      <motion.div style={{ y: scrollY, scale }} className="h-full w-full">
+        <div className="h-full w-full overflow-hidden rounded-[20px] bg-white p-2 shadow-[0_35px_100px_rgba(0,0,0,0.4)] sm:rounded-[28px] sm:p-3">
           <div className="relative h-full w-full overflow-hidden rounded-[15px] bg-white sm:rounded-[22px]">
             <img
               src={product.image ?? product.model}
