@@ -28,13 +28,7 @@ function HeroCard({
 
   const start = isOuter ? 0.30 : 0.045;
   const end = isOuter ? 0.58 : 0.25;
-
-  // Side cards use the same HEIGHT as the center card.
-  // Their WIDTH is intentionally smaller to create the fan composition.
   const sideWidth = "clamp(70px, 15vw, 270px)";
-
-  // Equal visual gaps: outer cards sit one side-card width + the same gap
-  // beyond the inner cards, producing 5 — 4 — CENTER — 2 — 3.
   const finalX = isOuter ? 35 : 18;
   const finalY = isOuter ? -5 : -40;
 
@@ -53,9 +47,6 @@ function HeroCard({
   const y = useTransform(yValue, (value) => `${value}px`);
   const scale = useTransform(reveal, [0, 0.35, 1], [0.78, 0.9, 1]);
   const opacity = useTransform(reveal, [0, 0.1, 0.45, 1], [0, 0.5, 0.9, 1]);
-
-  // Y-axis perspective tilt: vertical edges remain parallel and each card
-  // faces inward toward the center without a diagonal 2D rotation.
   const rotateY = useTransform(
     reveal,
     [0, 0.35, 1],
@@ -168,11 +159,16 @@ export function HeroParallax() {
     };
   }, [progress]);
 
-  // Spatial order: 5 — 4 — CENTER — 2 — 3.
   const leftInner = heroProducts[3];
   const rightInner = heroProducts[1];
   const leftOuter = heroProducts[2];
   const rightOuter = heroProducts[0];
+
+  const whiteTransition = useTransform(smooth, [0.58, 0.80], [0, 1]);
+  const darkHeroOpacity = useTransform(whiteTransition, [0, 0.78, 1], [1, 1, 0]);
+  const whiteStageOpacity = useTransform(whiteTransition, [0, 0.30, 0.72, 1], [0, 0, 0.9, 1]);
+  const darkTextOpacity = useTransform(whiteTransition, [0, 0.55, 0.80, 1], [1, 1, 0, 0]);
+  const whiteTextOpacity = useTransform(whiteTransition, [0, 0.58, 0.82, 1], [0, 0, 0.45, 1]);
 
   return (
     <section
@@ -182,9 +178,22 @@ export function HeroParallax() {
       style={{ minHeight: SCROLL_HEIGHT }}
     >
       <div className="sticky top-0 h-[100svh] overflow-hidden bg-black">
-        <div className="absolute inset-0 bg-black" />
+        <motion.div
+          className="absolute inset-0 z-0 bg-black"
+          style={{ opacity: darkHeroOpacity }}
+          aria-hidden="true"
+        />
 
-        <div className="absolute inset-x-0 top-0 z-40 flex items-start justify-between px-5 pt-6 sm:px-8 sm:pt-8 lg:px-12 lg:pt-10">
+        <motion.div
+          className="pointer-events-none absolute inset-0 z-30 bg-white"
+          style={{ opacity: whiteStageOpacity }}
+          aria-hidden="true"
+        />
+
+        <motion.div
+          className="absolute inset-x-0 top-0 z-50 flex items-start justify-between px-5 pt-6 sm:px-8 sm:pt-8 lg:px-12 lg:pt-10"
+          style={{ opacity: darkTextOpacity }}
+        >
           <p className="max-w-[280px] text-[8px] uppercase leading-[1.55] tracking-[0.13em] text-white/55 sm:text-[9px] lg:max-w-[340px]">
             A new language of digital fashion — designed to move like a campaign, not a carousel.
           </p>
@@ -194,16 +203,38 @@ export function HeroParallax() {
             <br />
             <span className="italic">AN ENTRANCE.</span>
           </h1>
+        </motion.div>
+
+        <motion.div
+          className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-start justify-between px-5 pt-6 text-black sm:px-8 sm:pt-8 lg:px-12 lg:pt-10"
+          style={{ opacity: whiteTextOpacity }}
+          aria-hidden="true"
+        >
+          <p className="max-w-[280px] text-[8px] uppercase leading-[1.55] tracking-[0.13em] text-black/45 sm:text-[9px] lg:max-w-[340px]">
+            A new language of digital fashion — designed to move like a campaign, not a carousel.
+          </p>
+
+          <h2 className="max-w-[360px] text-right text-[clamp(24px,3.2vw,48px)] font-light uppercase leading-[0.9] tracking-[-0.055em] sm:max-w-[500px]">
+            DESIGNED TO MAKE
+            <br />
+            <span className="italic">AN ENTRANCE.</span>
+          </h2>
+        </motion.div>
+
+        {/* Cards remain on top. The source imagery is still the lightweight
+            preview in heroProducts, while the stage behind them becomes white. */}
+        <div className="absolute inset-0 z-40">
+          <HeroCard product={leftOuter} progress={smooth} side="left" depth="outer" />
+          <HeroCard product={rightOuter} progress={smooth} side="right" depth="outer" />
+          <HeroCard product={leftInner} progress={smooth} side="left" depth="inner" />
+          <HeroCard product={rightInner} progress={smooth} side="right" depth="inner" />
+          <CenterCard product={heroProducts[0]} progress={smooth} />
         </div>
 
-        <HeroCard product={leftOuter} progress={smooth} side="left" depth="outer" />
-        <HeroCard product={rightOuter} progress={smooth} side="right" depth="outer" />
-        <HeroCard product={leftInner} progress={smooth} side="left" depth="inner" />
-        <HeroCard product={rightInner} progress={smooth} side="right" depth="inner" />
-
-        <CenterCard product={heroProducts[0]} progress={smooth} />
-
-        <div className="absolute bottom-6 left-5 right-5 z-40 flex items-end justify-between sm:bottom-8 sm:left-8 sm:right-8 lg:left-12 lg:right-12">
+        <motion.div
+          className="pointer-events-none absolute bottom-6 left-5 right-5 z-50 flex items-end justify-between sm:bottom-8 sm:left-8 sm:right-8 lg:left-12 lg:right-12"
+          style={{ opacity: darkTextOpacity }}
+        >
           <div>
             <p className="text-[8px] uppercase tracking-[0.22em] text-white/40 sm:text-[9px]">
               Scroll to explore
@@ -215,7 +246,7 @@ export function HeroParallax() {
           <p className="text-[8px] uppercase tracking-[0.2em] text-white/35 sm:text-[9px]">
             ZEVANA / 01 — 05
           </p>
-        </div>
+        </motion.div>
       </div>
     </section>
   );
