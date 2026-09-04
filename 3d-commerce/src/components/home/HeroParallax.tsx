@@ -6,7 +6,7 @@ import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 import { heroProducts } from "@/config/hero-products";
 
 const SCROLL_HEIGHT = "360svh";
-const CARD_HEIGHT = "clamp(123px, 31.9vw, 480px)";
+const CARD_HEIGHT = "clamp(150px, 31.9vw, 500px)";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -31,12 +31,12 @@ function HeroCard({
 
   // Side cards use the same HEIGHT as the center card.
   // Their WIDTH is intentionally smaller to create the fan composition.
-  const sideWidth = "clamp(58px, 15vw, 230px)";
+  const sideWidth = "clamp(70px, 15vw, 270px)";
 
   // Equal visual gaps: outer cards sit one side-card width + the same gap
   // beyond the inner cards, producing 5 — 4 — CENTER — 2 — 3.
-  const finalX = isOuter ? 37.5 : 21;
-  const finalY = isOuter ? -5 : -15;
+  const finalX = isOuter ? 35 : 18;
+  const finalY = isOuter ? -5 : -40;
 
   const reveal = useTransform(progress, [start, end], [0, 1]);
   const xValue = useTransform(
@@ -59,7 +59,7 @@ function HeroCard({
   const rotateY = useTransform(
     reveal,
     [0, 0.35, 1],
-    [0, isLeft ? 8 : -8, isLeft ? 18 : -18],
+    [0, isLeft ? 10 : -10, isLeft ? 20 : -20],
   );
 
   return (
