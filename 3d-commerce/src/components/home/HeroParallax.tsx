@@ -14,29 +14,47 @@ function HeroCard({
   product,
   progress,
   side,
-  stage,
+  depth,
 }: {
   product: (typeof heroProducts)[number];
   progress: ReturnType<typeof useMotionValue<number>>;
   side: "left" | "right";
-  stage: 1 | 2;
+  depth: "inner" | "outer";
 }) {
-  const direction = side === "left" ? -1 : 1;
+  const isLeft = side === "left";
+  const isOuter = depth === "outer";
+  const direction = isLeft ? -1 : 1;
 
-  // Each card begins directly underneath the center card and travels outward.
-  // This creates the impression that the cards are physically coming from
-  // behind the hero card instead of simply fading in beside it.
-  const start = stage === 1 ? 0.055 : 0.34;
-  const end = stage === 1 ? 0.22 : 0.54;
-  const finalX = stage === 1 ? 28 : 53;
-  const finalRotate = direction * (stage === 1 ? 7 : 10);
+  // The cards start underneath the center and fan outward as the user scrolls.
+  // Inner cards are close to the center and slightly higher. Outer cards are
+  // slightly lower and remain behind their corresponding inner card.
+  const start = isOuter ? 0.30 : 0.045;
+  const end = isOuter ? 0.58 : 0.25;
+  const finalX = isOuter ? 47 : 25;
+  const finalY = isOuter ? 9 : -17;
+  const finalTilt = isOuter ? 12 : 9;
 
   const reveal = useTransform(progress, [start, end], [0, 1]);
-  const x = useTransform(reveal, [0, 0.72, 1], [0, direction * 9, direction * finalX]);
-  const y = useTransform(reveal, [0, 0.72, 1], [0, -8, 0]);
-  const scale = useTransform(reveal, [0, 0.35, 1], [0.9, 0.96, 1]);
-  const opacity = useTransform(reveal, [0, 0.12, 0.5, 1], [0, 0.55, 0.9, 1]);
-  const rotation = useTransform(reveal, [0, 1], [0, finalRotate]);
+  const x = useTransform(
+    reveal,
+    [0, 0.55, 1],
+    [0, direction * 7, direction * finalX],
+  );
+  const y = useTransform(
+    reveal,
+    [0, 0.55, 1],
+    [0, isOuter ? 0 : -7, finalY],
+  );
+  const scale = useTransform(reveal, [0, 0.35, 1], [0.86, 0.96, 1]);
+  const opacity = useTransform(reveal, [0, 0.1, 0.45, 1], [0, 0.5, 0.9, 1]);
+
+  // Fan inward toward the center: left cards rotate clockwise, right cards
+  // rotate counter-clockwise.
+  const rotation = useTransform(
+    reveal,
+    [0, 1],
+    [0, isLeft ? finalTilt : -finalTilt],
+  );
 
   return (
     <motion.article
@@ -46,9 +64,10 @@ function HeroCard({
         scale,
         opacity,
         rotate: rotation,
+        zIndex: isOuter ? 10 : 15,
         transformOrigin: "50% 50%",
       }}
-      className="pointer-events-none absolute left-1/2 top-1/2 z-10 w-[clamp(92px,24vw,360px)] -translate-x-1/2 -translate-y-1/2"
+      className="pointer-events-none absolute left-1/2 top-1/2 w-[clamp(92px,24vw,360px)] -translate-x-1/2 -translate-y-1/2"
     >
       <div className="aspect-[3/4] w-full overflow-hidden rounded-[20px] bg-white p-2 shadow-[0_35px_100px_rgba(0,0,0,0.34)] sm:rounded-[28px] sm:p-3">
         <div className="h-full w-full overflow-hidden rounded-[15px] bg-white sm:rounded-[22px]">
@@ -142,13 +161,12 @@ export function HeroParallax() {
     };
   }, [progress]);
 
-  const firstPairOpacity = clamp((rawProgress - 0.025) / 0.12, 0, 1);
-  const secondPairOpacity = clamp((rawProgress - 0.30) / 0.14, 0, 1);
-
-  const leftFirst = heroProducts[1];
-  const rightFirst = heroProducts[2];
-  const leftSecond = heroProducts[3];
-  const rightSecond = heroProducts[0];
+  // Spatial order matches the reference: 5 — 4 — CENTER — 2 — 3.
+  // Outer cards sit behind their corresponding inner card.
+  const leftInner = heroProducts[3];
+  const rightInner = heroProducts[1];
+  const leftOuter = heroProducts[2];
+  const rightOuter = heroProducts[0];
 
   return (
     <section
@@ -172,11 +190,10 @@ export function HeroParallax() {
           </h1>
         </div>
 
-        {/* Side cards deliberately sit behind the center card (z-10 vs z-20). */}
-        <HeroCard product={leftFirst} progress={smooth} side="left" stage={1} />
-        <HeroCard product={rightFirst} progress={smooth} side="right" stage={1} />
-        <HeroCard product={leftSecond} progress={smooth} side="left" stage={2} />
-        <HeroCard product={rightSecond} progress={smooth} side="right" stage={2} />
+        <HeroCard product={leftOuter} progress={smooth} side="left" depth="outer" />
+        <HeroCard product={rightOuter} progress={smooth} side="right" depth="outer" />
+        <HeroCard product={leftInner} progress={smooth} side="left" depth="inner" />
+        <HeroCard product={rightInner} progress={smooth} side="right" depth="inner" />
 
         <CenterCard product={heroProducts[0]} progress={smooth} />
 
