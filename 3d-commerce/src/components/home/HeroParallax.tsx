@@ -168,6 +168,15 @@ export function HeroParallax() {
     };
   }, [progress]);
 
+  // The white stage enters only after the five-card composition is established.
+  // It rises from below the viewport instead of fading the black background.
+  const whiteStageY = useTransform(
+    smooth,
+    [0.58, 0.72, 0.86],
+    ["100%", "42%", "0%"],
+  );
+  const whiteStageOpacity = useTransform(smooth, [0.58, 0.64], [0, 1]);
+
   // Spatial order: 5 — 4 — CENTER — 2 — 3.
   const leftInner = heroProducts[3];
   const rightInner = heroProducts[1];
@@ -183,6 +192,21 @@ export function HeroParallax() {
     >
       <div className="sticky top-0 h-[100svh] overflow-hidden bg-black">
         <div className="absolute inset-0 bg-black" />
+
+        {/*
+          Editorial white stage.
+          It starts completely below the viewport and physically rises upward
+          as the user scrolls after the five-card reveal is complete.
+          Cards stay above it through their higher z-index values.
+        */}
+        <motion.div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-full bg-white"
+          style={{
+            y: whiteStageY,
+            opacity: whiteStageOpacity,
+          }}
+        />
 
         <div className="absolute inset-x-0 top-0 z-40 flex items-start justify-between px-5 pt-6 sm:px-8 sm:pt-8 lg:px-12 lg:pt-10">
           <p className="max-w-[280px] text-[8px] uppercase leading-[1.55] tracking-[0.13em] text-white/55 sm:text-[9px] lg:max-w-[340px]">
