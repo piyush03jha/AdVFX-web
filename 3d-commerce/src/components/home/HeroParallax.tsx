@@ -4,55 +4,14 @@ import { useEffect, useRef } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 
 import { heroProducts } from "@/config/hero-products";
+import { trendingProducts } from "@/config/trending-products";
+import { ShopProductCard } from "@/components/shop/ShopProductCard";
 
 const SCROLL_HEIGHT = "360svh";
 const CARD_HEIGHT = "clamp(150px, 31.9vw, 500px)";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
-
-function ProductCard({
-  product,
-  progress,
-}: {
-  product: (typeof heroProducts)[number];
-  progress: ReturnType<typeof useMotionValue<number>>;
-}) {
-  // The card rises from below only after the white editorial stage is visible.
-  // Its viewport is intentionally shallow: the lower price/rating area remains
-  // below the fold so only the upper half of the product card is exposed.
-  const reveal = useTransform(progress, [0.82, 0.92], [0, 1]);
-  const y = useTransform(reveal, [0, 1], ["130px", "0px"]);
-  const opacity = useTransform(reveal, [0, 0.25, 1], [0, 0.65, 1]);
-
-  return (
-    <motion.div
-      aria-hidden="true"
-      className="absolute left-0 top-[calc(100%+12px)] w-full overflow-hidden rounded-t-[12px] border border-black/10 bg-white text-black shadow-[0_-10px_30px_rgba(0,0,0,0.08)] sm:rounded-t-[16px]"
-      style={{
-        y,
-        opacity,
-        height: "clamp(58px, 6.5vw, 82px)",
-      }}
-    >
-      <div className="min-h-[150px] px-2.5 py-2.5 sm:px-3.5 sm:py-3">
-        <p className="truncate text-[8px] font-medium uppercase tracking-[0.08em] sm:text-[9px]">
-          {product.name}
-        </p>
-        <p className="mt-1 truncate text-[7px] uppercase tracking-[0.14em] text-black/40 sm:text-[8px]">
-          {product.category}
-        </p>
-
-        {/* Intentionally below the visible slice. Price/rating are not shown
-            during this hero stage; the full product card comes later. */}
-        <div className="mt-7 border-t border-black/10 pt-3 text-[7px] uppercase tracking-[0.1em] text-black/55 sm:text-[8px]">
-          <span>₹{product.price.toLocaleString("en-IN")}</span>
-          <span className="ml-4">Premium model</span>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
 function HeroCard({
   product,
@@ -68,7 +27,6 @@ function HeroCard({
   const isLeft = side === "left";
   const isOuter = depth === "outer";
   const direction = isLeft ? -1 : 1;
-
   const start = isOuter ? 0.30 : 0.045;
   const end = isOuter ? 0.58 : 0.25;
   const sideWidth = "clamp(70px, 15vw, 270px)";
@@ -76,33 +34,22 @@ function HeroCard({
   const finalY = isOuter ? -5 : -40;
 
   const reveal = useTransform(progress, [start, end], [0, 1]);
-  const baseXValue = useTransform(
+  const xValue = useTransform(
     reveal,
     [0, 0.55, 1],
     [0, direction * 2, direction * finalX],
   );
-  const baseYValue = useTransform(
+  const yValue = useTransform(
     reveal,
     [0, 0.55, 1],
     [0, isOuter ? 0 : -5, finalY],
   );
-
-  // After the white stage settles, the model and its card move together to
-  // the next carousel slot. This makes center -> left and right -> center.
-  const carouselShift = useTransform(progress, [0.90, 1], [0, -17]);
-  const xValue = useTransform(
-    [baseXValue, carouselShift],
-    ([baseX, shift]) => (baseX as number) + (shift as number),
-  );
-
   const x = useTransform(xValue, (value) => `${value}vw`);
-  const y = useTransform(baseYValue, (value) => `${value}px`);
+  const y = useTransform(yValue, (value) => `${value}px`);
   const scale = useTransform(reveal, [0, 0.35, 1], [0.78, 0.9, 1]);
   const opacity = useTransform(reveal, [0, 0.1, 0.45, 1], [0, 0.5, 0.9, 1]);
-
   const chromeOpacity = useTransform(progress, [0.62, 0.76, 0.88], [1, 0.35, 0]);
   const imageInset = useTransform(progress, [0.62, 0.88], ["6px", "0px"]);
-
   const rotateY = useTransform(
     reveal,
     [0, 0.35, 1],
@@ -131,7 +78,6 @@ function HeroCard({
         className="absolute inset-0 overflow-hidden rounded-[16px] bg-white shadow-[0_25px_70px_rgba(0,0,0,0.34)] sm:rounded-[22px]"
         style={{ opacity: chromeOpacity }}
       />
-
       <motion.div
         className="absolute inset-0 overflow-visible rounded-[16px] sm:rounded-[22px]"
         style={{ padding: imageInset }}
@@ -145,7 +91,6 @@ function HeroCard({
             className="h-full w-full object-contain"
           />
         </div>
-        <ProductCard product={product} progress={progress} />
       </motion.div>
     </motion.article>
   );
@@ -163,17 +108,13 @@ function CenterCard({
   const chromeOpacity = useTransform(progress, [0.62, 0.76, 0.88], [1, 0.35, 0]);
   const imageInset = useTransform(progress, [0.62, 0.88], ["8px", "0px"]);
 
-  // The active center model moves to the left on the next scroll step.
-  const carouselShift = useTransform(progress, [0.90, 1], [0, -18]);
-  const centerX = useTransform(carouselShift, (value) => `${value}vw`);
-
   return (
     <motion.div
       initial={{ y: "115vh", opacity: 0, scale: 0.9 }}
       animate={{ y: 0, opacity: 1, scale: 1 }}
       transition={{ duration: 1.45, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
       className="absolute left-1/2 top-1/2 z-20 w-[clamp(92px,24vw,360px)] -translate-x-1/2 -translate-y-1/2"
-      style={{ height: CARD_HEIGHT, x: centerX }}
+      style={{ height: CARD_HEIGHT }}
     >
       <motion.div style={{ y: scrollY, scale }} className="relative h-full w-full">
         <motion.div
@@ -181,7 +122,6 @@ function CenterCard({
           className="absolute inset-0 overflow-hidden rounded-[20px] bg-white shadow-[0_35px_100px_rgba(0,0,0,0.4)] sm:rounded-[28px]"
           style={{ opacity: chromeOpacity }}
         />
-
         <motion.div
           className="absolute inset-0 overflow-visible rounded-[20px] sm:rounded-[28px]"
           style={{ padding: imageInset }}
@@ -196,10 +136,57 @@ function CenterCard({
               className="h-full w-full object-contain"
             />
           </div>
-          <ProductCard product={product} progress={progress} />
         </motion.div>
       </motion.div>
     </motion.div>
+  );
+}
+
+function ProductContinuation() {
+  const products = trendingProducts.slice(0, 3);
+
+  return (
+    <section
+      aria-labelledby="hero-product-continuation"
+      className="bg-white px-5 py-16 text-black sm:px-8 sm:py-24 lg:px-12 lg:py-28"
+    >
+      <div className="mx-auto max-w-[1440px]">
+        <div className="mb-8 flex items-end justify-between gap-6 sm:mb-12">
+          <div>
+            <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-black/45">
+              Continue exploring
+            </p>
+            <h2
+              id="hero-product-continuation"
+              className="mt-2 text-[clamp(28px,4vw,58px)] font-light leading-[0.95] tracking-[-0.05em]"
+            >
+              MORE MODELS.
+            </h2>
+          </div>
+          <p className="hidden max-w-[260px] text-right text-[10px] leading-4 text-black/45 sm:block">
+            Keep scrolling for more premium 3D assets.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {products.map((product, index) => (
+            <motion.div
+              key={product.id}
+              initial={{ opacity: 0, y: 70 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.18 }}
+              transition={{
+                duration: 0.7,
+                delay: index * 0.08,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              <ShopProductCard product={product} />
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -219,7 +206,6 @@ export function HeroParallax() {
       frame = 0;
       const section = sectionRef.current;
       if (!section) return;
-
       const rect = section.getBoundingClientRect();
       const distance = Math.max(section.offsetHeight - window.innerHeight, 1);
       progress.set(clamp(-rect.top / distance, 0, 1));
@@ -254,53 +240,56 @@ export function HeroParallax() {
   const rightOuter = heroProducts[0];
 
   return (
-    <section
-      ref={sectionRef}
-      aria-label="Featured 3D collection"
-      className="relative bg-black text-white"
-      style={{ minHeight: SCROLL_HEIGHT }}
-    >
-      <div className="sticky top-0 h-[100svh] overflow-hidden bg-black">
-        <div className="absolute inset-0 bg-black" />
+    <>
+      <section
+        ref={sectionRef}
+        aria-label="Featured 3D collection"
+        className="relative bg-black text-white"
+        style={{ minHeight: SCROLL_HEIGHT }}
+      >
+        <div className="sticky top-0 h-[100svh] overflow-hidden bg-black">
+          <div className="absolute inset-0 bg-black" />
 
-        <motion.div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-full bg-white"
-          style={{ y: whiteStageY, opacity: whiteStageOpacity }}
-        />
+          <motion.div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-full bg-white"
+            style={{ y: whiteStageY, opacity: whiteStageOpacity }}
+          />
 
-        <div className="absolute inset-x-0 top-0 z-40 flex items-start justify-between px-5 pt-6 sm:px-8 sm:pt-8 lg:px-12 lg:pt-10">
-          <p className="max-w-[280px] text-[8px] uppercase leading-[1.55] tracking-[0.13em] text-white/55 sm:text-[9px] lg:max-w-[340px]">
-            A new language of digital fashion — designed to move like a campaign, not a carousel.
-          </p>
-
-          <h1 className="max-w-[360px] text-right text-[clamp(24px,3.2vw,48px)] font-light uppercase leading-[0.9] tracking-[-0.055em] sm:max-w-[500px]">
-            DESIGNED TO MAKE
-            <br />
-            <span className="italic">AN ENTRANCE.</span>
-          </h1>
-        </div>
-
-        <HeroCard product={leftOuter} progress={smooth} side="left" depth="outer" />
-        <HeroCard product={rightOuter} progress={smooth} side="right" depth="outer" />
-        <HeroCard product={leftInner} progress={smooth} side="left" depth="inner" />
-        <HeroCard product={rightInner} progress={smooth} side="right" depth="inner" />
-        <CenterCard product={heroProducts[0]} progress={smooth} />
-
-        <div className="absolute bottom-6 left-5 right-5 z-40 flex items-end justify-between sm:bottom-8 sm:left-8 sm:right-8 lg:left-12 lg:right-12">
-          <div>
-            <p className="text-[8px] uppercase tracking-[0.22em] text-white/40 sm:text-[9px]">
-              Scroll to explore
+          <div className="absolute inset-x-0 top-0 z-40 flex items-start justify-between px-5 pt-6 sm:px-8 sm:pt-8 lg:px-12 lg:pt-10">
+            <p className="max-w-[280px] text-[8px] uppercase leading-[1.55] tracking-[0.13em] text-white/55 sm:text-[9px] lg:max-w-[340px]">
+              A new language of digital fashion — designed to move like a campaign, not a carousel.
             </p>
-            <div className="mt-2 h-px w-24 overflow-hidden bg-white/15 sm:w-32">
-              <motion.div style={{ scaleX: smooth }} className="h-full origin-left bg-white" />
-            </div>
+            <h1 className="max-w-[360px] text-right text-[clamp(24px,3.2vw,48px)] font-light uppercase leading-[0.9] tracking-[-0.055em] sm:max-w-[500px]">
+              DESIGNED TO MAKE
+              <br />
+              <span className="italic">AN ENTRANCE.</span>
+            </h1>
           </div>
-          <p className="text-[8px] uppercase tracking-[0.2em] text-white/35 sm:text-[9px]">
-            ZEVANA / 01 — 05
-          </p>
+
+          <HeroCard product={leftOuter} progress={smooth} side="left" depth="outer" />
+          <HeroCard product={rightOuter} progress={smooth} side="right" depth="outer" />
+          <HeroCard product={leftInner} progress={smooth} side="left" depth="inner" />
+          <HeroCard product={rightInner} progress={smooth} side="right" depth="inner" />
+          <CenterCard product={heroProducts[0]} progress={smooth} />
+
+          <div className="absolute bottom-6 left-5 right-5 z-40 flex items-end justify-between sm:bottom-8 sm:left-8 sm:right-8 lg:left-12 lg:right-12">
+            <div>
+              <p className="text-[8px] uppercase tracking-[0.22em] text-white/40 sm:text-[9px]">
+                Scroll to explore
+              </p>
+              <div className="mt-2 h-px w-24 overflow-hidden bg-white/15 sm:w-32">
+                <motion.div style={{ scaleX: smooth }} className="h-full origin-left bg-white" />
+              </div>
+            </div>
+            <p className="text-[8px] uppercase tracking-[0.2em] text-white/35 sm:text-[9px]">
+              ZEVANA / 01 — 05
+            </p>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <ProductContinuation />
+    </>
   );
 }
