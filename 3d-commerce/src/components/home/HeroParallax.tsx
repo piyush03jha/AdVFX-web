@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 
 import { heroProducts } from "@/config/hero-products";
@@ -25,35 +25,24 @@ function HeroCard({
   const isOuter = depth === "outer";
   const direction = isLeft ? -1 : 1;
 
-  // The cards start underneath the center and fan outward as the user scrolls.
-  // Inner cards are close to the center and slightly higher. Outer cards are
-  // slightly lower and remain behind their corresponding inner card.
+  // Cards begin behind the center and fan outward into the 5 — 4 — center — 2 — 3 layout.
   const start = isOuter ? 0.30 : 0.045;
   const end = isOuter ? 0.58 : 0.25;
-  const finalX = isOuter ? 47 : 25;
-  const finalY = isOuter ? 9 : -17;
-  const finalTilt = isOuter ? 12 : 9;
+  const finalX = isOuter ? 44 : 22;
+  const finalY = isOuter ? 8 : -15;
 
   const reveal = useTransform(progress, [start, end], [0, 1]);
-  const x = useTransform(
-    reveal,
-    [0, 0.55, 1],
-    [0, direction * 7, direction * finalX],
-  );
-  const y = useTransform(
-    reveal,
-    [0, 0.55, 1],
-    [0, isOuter ? 0 : -7, finalY],
-  );
+  const x = useTransform(reveal, [0, 0.55, 1], [0, direction * 5, direction * finalX]);
+  const y = useTransform(reveal, [0, 0.55, 1], [0, isOuter ? 0 : -6, finalY]);
   const scale = useTransform(reveal, [0, 0.35, 1], [0.86, 0.96, 1]);
   const opacity = useTransform(reveal, [0, 0.1, 0.45, 1], [0, 0.5, 0.9, 1]);
 
-  // Fan inward toward the center: left cards rotate clockwise, right cards
-  // rotate counter-clockwise.
-  const rotation = useTransform(
+  // Y-axis perspective tilt: vertical edges remain parallel. The left card
+  // turns toward the center with positive rotateY; the right card with negative rotateY.
+  const rotateY = useTransform(
     reveal,
-    [0, 1],
-    [0, isLeft ? finalTilt : -finalTilt],
+    [0, 0.35, 1],
+    [0, isLeft ? 8 : -8, isLeft ? 18 : -18],
   );
 
   return (
@@ -63,8 +52,10 @@ function HeroCard({
         y: useTransform(y, (value) => `${value}px`),
         scale,
         opacity,
-        rotate: rotation,
+        rotateY,
         zIndex: isOuter ? 10 : 15,
+        transformPerspective: 1200,
+        transformStyle: "preserve-3d",
         transformOrigin: "50% 50%",
       }}
       className="pointer-events-none absolute left-1/2 top-1/2 w-[clamp(92px,24vw,360px)] -translate-x-1/2 -translate-y-1/2"
@@ -121,7 +112,6 @@ function CenterCard({
 
 export function HeroParallax() {
   const sectionRef = useRef<HTMLElement | null>(null);
-  const [rawProgress, setRawProgress] = useState(0);
   const progress = useMotionValue(0);
   const smooth = useSpring(progress, {
     stiffness: 105,
@@ -139,10 +129,7 @@ export function HeroParallax() {
 
       const rect = section.getBoundingClientRect();
       const distance = Math.max(section.offsetHeight - window.innerHeight, 1);
-      const next = clamp(-rect.top / distance, 0, 1);
-
-      setRawProgress(next);
-      progress.set(next);
+      progress.set(clamp(-rect.top / distance, 0, 1));
     };
 
     const onScroll = () => {
@@ -161,8 +148,7 @@ export function HeroParallax() {
     };
   }, [progress]);
 
-  // Spatial order matches the reference: 5 — 4 — CENTER — 2 — 3.
-  // Outer cards sit behind their corresponding inner card.
+  // Spatial order: 5 — 4 — CENTER — 2 — 3.
   const leftInner = heroProducts[3];
   const rightInner = heroProducts[1];
   const leftOuter = heroProducts[2];
@@ -203,10 +189,7 @@ export function HeroParallax() {
               Scroll to explore
             </p>
             <div className="mt-2 h-px w-24 overflow-hidden bg-white/15 sm:w-32">
-              <motion.div
-                style={{ scaleX: smooth }}
-                className="h-full origin-left bg-white"
-              />
+              <motion.div style={{ scaleX: smooth }} className="h-full origin-left bg-white" />
             </div>
           </div>
           <p className="text-[8px] uppercase tracking-[0.2em] text-white/35 sm:text-[9px]">
