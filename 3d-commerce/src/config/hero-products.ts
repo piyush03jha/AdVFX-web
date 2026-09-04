@@ -22,7 +22,7 @@ export const heroProducts: HeroProduct[] = [
       "A premium futuristic warrior asset with clean topology, dramatic armor detail, and a presentation-ready silhouette for hero shots.",
     price: 2499,
     model: "/models/products/1.glb",
-    image: "/catogeries/1.jpg",
+    image: "/hero/models/cyber-warrior.webp",
     category: "Gaming",
     metrics: [
       { label: "Rig", value: "Animation friendly" },
@@ -37,7 +37,7 @@ export const heroProducts: HeroProduct[] = [
       "A heavy mechanical guardian model tuned for premium storefront renders, collector drops, and cinematic close-up presentation.",
     price: 3299,
     model: "/models/products/2.glb",
-    image: "/catogeries/2.jpg",
+    image: "/hero/models/mecha-guardian.webp",
     category: "Prime",
     metrics: [
       { label: "Quality", value: "High detail" },
@@ -52,7 +52,7 @@ export const heroProducts: HeroProduct[] = [
       "A sleek concept-speed model built for launch banners, product loops, and motion-first e-commerce presentations.",
     price: 1999,
     model: "/models/products/3.glb",
-    image: "/catogeries/3.jpg",
+    image: "/hero/models/future-racer.webp",
     category: "Mobility",
     metrics: [
       { label: "Viewport", value: "Realtime smooth" },
@@ -67,7 +67,22 @@ export const heroProducts: HeroProduct[] = [
       "A precision-crafted futuristic collectible designed with bold geometry, refined surface details, and a cinematic presentation-ready finish.",
     price: 2899,
     model: "/models/products/4.glb",
-    image: "/catogeries/4.jpg",
+    image: "/hero/models/nova-sentinel.webp",
+    category: "Collectibles",
+    metrics: [
+      { label: "Quality", value: "Premium detail" },
+      { label: "Formats", value: "GLB / OBJ" },
+      { label: "Delivery", value: "Instant download" },
+    ],
+  },
+  {
+    id: "product-5",
+    name: "Soundwave",
+    description:
+      "A cinematic robot collectible with a strong silhouette, detailed mechanical surfaces, and presentation-ready proportions.",
+    price: 2999,
+    model: "/models/products/5.glb",
+    image: "/hero/models/soundwave.webp",
     category: "Collectibles",
     metrics: [
       { label: "Quality", value: "Premium detail" },
