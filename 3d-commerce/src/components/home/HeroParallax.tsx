@@ -18,12 +18,7 @@ const PRODUCT_GAP = "clamp(5px, 0.8vw, 12px)";
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
-/**
- * The final editorial row uses one shared image footprint for every product.
- * This is deliberately independent from the earlier fan composition so the
- * production assets can later be swapped without changing the choreography.
- */
-const FINAL_X = [-34, -17, 0, 17, 34] as const;
+const FINAL_X = [-35, -17.5, 0, 17.5, 35] as const;
 
 function ProductInfoCard({
   product,
@@ -32,14 +27,14 @@ function ProductInfoCard({
   product: (typeof heroProducts)[number];
   progress: ReturnType<typeof useMotionValue<number>>;
 }) {
-  const reveal = useTransform(progress, [0.82, 0.93], [0, 1]);
-  const y = useTransform(reveal, [0, 1], [110, 0]);
-  const opacity = useTransform(reveal, [0, 0.3, 1], [0, 0.5, 1]);
+  const reveal = useTransform(progress, [0.84, 0.96], [0, 1]);
+  const y = useTransform(reveal, [0, 1], [120, 0]);
+  const opacity = useTransform(reveal, [0, 0.25, 1], [0, 0.55, 1]);
 
   return (
     <motion.div
-      className="pointer-events-auto absolute left-0 top-full mt-[var(--product-gap)] w-full"
-      style={{ y, opacity, "--product-gap": PRODUCT_GAP } as React.CSSProperties}
+      className="pointer-events-auto absolute left-0 top-full w-full"
+      style={{ y, opacity, marginTop: PRODUCT_GAP }}
     >
       <Card className="overflow-hidden rounded-[10px] border-black/10 bg-white text-black shadow-[0_12px_35px_rgba(0,0,0,0.08)] sm:rounded-[14px]">
         <div className="p-2.5 sm:p-3.5">
@@ -52,14 +47,22 @@ function ProductInfoCard({
                 {product.name}
               </h3>
             </div>
-            <Badge variant="default" className="shrink-0 border-black/10 bg-black/[0.04] text-[7px] text-black/55 sm:text-[8px]">
+            <Badge
+              variant="default"
+              className="shrink-0 border-black/10 bg-black/[0.04] text-[7px] text-black/55 sm:text-[8px]"
+            >
               3D
             </Badge>
           </div>
 
           <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-black/10 pt-2.5 sm:mt-3 sm:pt-3">
             <Price value={product.price} size="sm" />
-            <Button type="button" size="sm" variant="primary" className="h-7 px-2 text-[8px] sm:h-8 sm:px-2.5 sm:text-[9px]">
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              className="h-7 px-2 text-[8px] sm:h-8 sm:px-2.5 sm:text-[9px]"
+            >
               <IconShoppingCart size={12} />
               Add to Cart
             </Button>
@@ -90,56 +93,74 @@ function HeroProduct({
 
   const start = isCenter ? 0 : isOuter ? 0.30 : 0.045;
   const end = isCenter ? 0.08 : isOuter ? 0.58 : 0.25;
-
   const initialX = isCenter ? 0 : isOuter ? 35 : 18;
   const initialY = isCenter ? 0 : isOuter ? -5 : -40;
-  const initialWidth = isCenter ? "clamp(92px, 24vw, 360px)" : "clamp(70px, 15vw, 270px)";
+  const initialWidth = isCenter
+    ? "clamp(92px, 24vw, 360px)"
+    : "clamp(70px, 15vw, 270px)";
 
   const reveal = useTransform(progress, [start, end], [0, 1]);
-  const fanX = useTransform(reveal, [0, 0.55, 1], [0, direction * 2, direction * initialX]);
-  const fanY = useTransform(reveal, [0, 0.55, 1], [0, isOuter ? 0 : -5, initialY]);
-  const x = useTransform(fanX, (value) => `${value}vw`);
-  const y = useTransform(fanY, (value) => `${value}px`);
+  const fanX = useTransform(
+    reveal,
+    [0, 0.55, 1],
+    [0, direction * 2, direction * initialX],
+  );
+  const fanY = useTransform(
+    reveal,
+    [0, 0.55, 1],
+    [0, isOuter ? 0 : -5, initialY],
+  );
 
-  // Once the white stage is complete, all five models settle into one evenly
-  // sized row. The information card follows the model because it lives inside
-  // the same product wrapper.
-  const finalX = useTransform(progress, [0.78, 0.94], [initialX * direction, FINAL_X[finalIndex]]);
-  const finalY = useTransform(progress, [0.78, 0.94], [initialY, -125]);
-  const finalWidth = useTransform(progress, [0.78, 0.94], [initialWidth, IMAGE_WIDTH]);
-  const finalHeight = useTransform(progress, [0.78, 0.94], [IMAGE_HEIGHT, IMAGE_HEIGHT]);
-  const combinedX = useTransform([fanX, finalX], ([fan, target]) => {
-    const f = fan as number;
-    const t = target as number;
-    return `${progress.get() < 0.78 ? f : t}vw`;
-  });
-  const combinedY = useTransform([fanY, finalY], ([fan, target]) => {
-    const f = fan as number;
-    const t = target as number;
-    return `${progress.get() < 0.78 ? f : t}px`;
-  });
-
-  const width = useTransform(progress, (value) => {
-    const p = value as number;
-    if (p < 0.78) return initialWidth;
-    const t = clamp((p - 0.78) / 0.16, 0, 1);
-    return `calc(${initialWidth} + (${IMAGE_WIDTH} - ${initialWidth}) * ${t})`;
-  });
-
+  // The fan is the first composition. From the white-stage transition onward
+  // every product gets the exact same image footprint and an evenly spaced slot.
+  const x = useTransform(
+    () =>
+      progress.get() < 0.78
+        ? `${fanX.get()}vw`
+        : `${FINAL_X[finalIndex]}vw`,
+  );
+  const y = useTransform(
+    () =>
+      progress.get() < 0.78
+        ? `${fanY.get()}px`
+        : "-20px",
+  );
+  const width = useTransform(
+    progress,
+    [0.76, 0.94],
+    [initialWidth, IMAGE_WIDTH],
+  );
+  const height = IMAGE_HEIGHT;
+  const scale = useTransform(progress, [0.76, 0.94], [1, 1]);
   const opacity = useTransform(reveal, [0, 0.1, 0.45, 1], [0, 0.5, 0.9, 1]);
-  const chromeOpacity = useTransform(progress, [0.62, 0.76, 0.88], [1, 0.35, 0]);
-  const imageInset = useTransform(progress, [0.62, 0.88], [isCenter ? "8px" : "6px", "0px"]);
-  const rotateY = useTransform(reveal, [0, 0.35, 1], [0, isLeft ? 10 : -10, isLeft ? 20 : -20]);
-  const rowOpacity = useTransform(progress, [0.82, 0.9], [0, 1]);
+
+  const chromeOpacity = useTransform(
+    progress,
+    [0.62, 0.76, 0.88],
+    [1, 0.35, 0],
+  );
+  const imageInset = useTransform(
+    progress,
+    [0.62, 0.88],
+    [isCenter ? "8px" : "6px", "0px"],
+  );
+
+  // Perspective is useful for the black fan, but the final white editorial row
+  // is front-facing so all five image slots have the same visible dimensions.
+  const rotateY = useTransform(
+    progress,
+    [0, end, 0.88, 0.94],
+    [0, isLeft ? 20 : -20, isLeft ? 20 : -20, 0],
+  );
 
   return (
     <motion.article
       style={{
-        x: combinedX,
-        y: combinedY,
+        x,
+        y,
         width,
-        height: finalHeight,
-        scale: useTransform(progress, [0.78, 0.94], [1, 0.96]),
+        height,
+        scale,
         opacity,
         rotateY,
         zIndex: isCenter ? 20 : isOuter ? 10 : 15,
@@ -155,7 +176,10 @@ function HeroProduct({
         style={{ opacity: chromeOpacity }}
       />
 
-      <motion.div className="absolute inset-0 overflow-visible" style={{ padding: imageInset }}>
+      <motion.div
+        className="absolute inset-0 overflow-visible"
+        style={{ padding: imageInset }}
+      >
         <div className="h-full w-full overflow-hidden rounded-[12px] sm:rounded-[17px]">
           <img
             src={product.image ?? product.model}
@@ -167,9 +191,7 @@ function HeroProduct({
           />
         </div>
 
-        <motion.div style={{ opacity: rowOpacity }}>
-          <ProductInfoCard product={product} progress={progress} />
-        </motion.div>
+        <ProductInfoCard product={product} progress={progress} />
       </motion.div>
     </motion.article>
   );
@@ -178,7 +200,11 @@ function HeroProduct({
 export function HeroParallax() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const progress = useMotionValue(0);
-  const smooth = useSpring(progress, { stiffness: 105, damping: 26, mass: 0.7 });
+  const smooth = useSpring(progress, {
+    stiffness: 105,
+    damping: 26,
+    mass: 0.7,
+  });
 
   useEffect(() => {
     let frame = 0;
@@ -209,11 +235,15 @@ export function HeroParallax() {
     };
   }, [progress]);
 
-  const whiteStageY = useTransform(smooth, [0.58, 0.72, 0.86], ["100%", "42%", "0%"]);
+  const whiteStageY = useTransform(
+    smooth,
+    [0.58, 0.72, 0.86],
+    ["100%", "42%", "0%"],
+  );
   const whiteStageOpacity = useTransform(smooth, [0.58, 0.64], [0, 1]);
 
-  // Five visual slots. Product data is reused until the five final production
-  // assets are supplied; each slot is still independently wired to a product.
+  // Keep five slots in the hero itself. Once the five production images are
+  // supplied, only these product records/assets need to change.
   const products = [
     heroProducts[2],
     heroProducts[3],
