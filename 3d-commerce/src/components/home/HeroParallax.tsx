@@ -70,17 +70,13 @@ function HeroCard({
       }}
       className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
     >
-      <div className="h-full w-full overflow-hidden rounded-[16px] bg-white p-1.5 shadow-[0_25px_70px_rgba(0,0,0,0.34)] sm:rounded-[22px] sm:p-2">
-        <div className="h-full w-full overflow-hidden rounded-[12px] bg-white sm:rounded-[17px]">
-          <img
-            src={product.image ?? product.model}
-            alt={product.name}
-            loading="eager"
-            decoding="async"
-            className="h-full w-full object-contain"
-          />
-        </div>
-      </div>
+      <img
+        src={product.image ?? product.model}
+        alt={product.name}
+        loading="eager"
+        decoding="async"
+        className="h-full w-full object-contain drop-shadow-[0_22px_35px_rgba(0,0,0,0.22)]"
+      />
     </motion.article>
   );
 }
@@ -104,18 +100,14 @@ function CenterCard({
       style={{ height: CARD_HEIGHT }}
     >
       <motion.div style={{ y: scrollY, scale }} className="h-full w-full">
-        <div className="h-full w-full overflow-hidden rounded-[20px] bg-white p-2 shadow-[0_35px_100px_rgba(0,0,0,0.4)] sm:rounded-[28px] sm:p-3">
-          <div className="relative h-full w-full overflow-hidden rounded-[15px] bg-white sm:rounded-[22px]">
-            <img
-              src={product.image ?? product.model}
-              alt={product.name}
-              loading="eager"
-              decoding="async"
-              fetchPriority="high"
-              className="h-full w-full object-contain"
-            />
-          </div>
-        </div>
+        <img
+          src={product.image ?? product.model}
+          alt={product.name}
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+          className="h-full w-full object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.28)]"
+        />
       </motion.div>
     </motion.div>
   );
@@ -159,16 +151,31 @@ export function HeroParallax() {
     };
   }, [progress]);
 
-  const leftInner = heroProducts[3];
+  // Final spatial order: 5 — 4 — CENTER — 2 — 3.
+  const center = heroProducts[0];
   const rightInner = heroProducts[1];
-  const leftOuter = heroProducts[2];
-  const rightOuter = heroProducts[0];
+  const rightOuter = heroProducts[2];
+  const leftInner = heroProducts[3];
+  const leftOuter = heroProducts[4];
 
-  const whiteTransition = useTransform(smooth, [0.58, 0.80], [0, 1]);
-  const darkHeroOpacity = useTransform(whiteTransition, [0, 0.78, 1], [1, 1, 0]);
-  const whiteStageOpacity = useTransform(whiteTransition, [0, 0.30, 0.72, 1], [0, 0, 0.9, 1]);
-  const darkTextOpacity = useTransform(whiteTransition, [0, 0.55, 0.80, 1], [1, 1, 0, 0]);
-  const whiteTextOpacity = useTransform(whiteTransition, [0, 0.58, 0.82, 1], [0, 0, 0.45, 1]);
+  // The editorial white stage does not fade in like an overlay.
+  // It physically reveals upward from the bottom of the viewport.
+  const whiteStageProgress = useTransform(smooth, [0.58, 0.90], [0, 1]);
+  const whiteStageClip = useTransform(
+    whiteStageProgress,
+    (value) => `inset(${100 - value * 100}% 0 0 0)`,
+  );
+
+  const darkTextOpacity = useTransform(
+    whiteStageProgress,
+    [0, 0.72, 1],
+    [1, 0.35, 0],
+  );
+  const whiteTextOpacity = useTransform(
+    whiteStageProgress,
+    [0, 0.60, 1],
+    [0, 0.65, 1],
+  );
 
   return (
     <section
@@ -178,18 +185,17 @@ export function HeroParallax() {
       style={{ minHeight: SCROLL_HEIGHT }}
     >
       <div className="sticky top-0 h-[100svh] overflow-hidden bg-black">
-        <motion.div
-          className="absolute inset-0 z-0 bg-black"
-          style={{ opacity: darkHeroOpacity }}
-          aria-hidden="true"
-        />
+        {/* Base stage */}
+        <div className="absolute inset-0 z-0 bg-black" aria-hidden="true" />
 
+        {/* White editorial stage rises from the bottom on scroll. */}
         <motion.div
           className="pointer-events-none absolute inset-0 z-30 bg-white"
-          style={{ opacity: whiteStageOpacity }}
+          style={{ clipPath: whiteStageClip }}
           aria-hidden="true"
         />
 
+        {/* Dark copy */}
         <motion.div
           className="absolute inset-x-0 top-0 z-50 flex items-start justify-between px-5 pt-6 sm:px-8 sm:pt-8 lg:px-12 lg:pt-10"
           style={{ opacity: darkTextOpacity }}
@@ -205,6 +211,7 @@ export function HeroParallax() {
           </h1>
         </motion.div>
 
+        {/* White-stage copy */}
         <motion.div
           className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-start justify-between px-5 pt-6 text-black sm:px-8 sm:pt-8 lg:px-12 lg:pt-10"
           style={{ opacity: whiteTextOpacity }}
@@ -221,16 +228,16 @@ export function HeroParallax() {
           </h2>
         </motion.div>
 
-        {/* Cards remain on top. The source imagery is still the lightweight
-            preview in heroProducts, while the stage behind them becomes white. */}
+        {/* Transparent model cutouts stay above the rising white stage. */}
         <div className="absolute inset-0 z-40">
           <HeroCard product={leftOuter} progress={smooth} side="left" depth="outer" />
           <HeroCard product={rightOuter} progress={smooth} side="right" depth="outer" />
           <HeroCard product={leftInner} progress={smooth} side="left" depth="inner" />
           <HeroCard product={rightInner} progress={smooth} side="right" depth="inner" />
-          <CenterCard product={heroProducts[0]} progress={smooth} />
+          <CenterCard product={center} progress={smooth} />
         </div>
 
+        {/* Dark-stage footer copy */}
         <motion.div
           className="pointer-events-none absolute bottom-6 left-5 right-5 z-50 flex items-end justify-between sm:bottom-8 sm:left-8 sm:right-8 lg:left-12 lg:right-12"
           style={{ opacity: darkTextOpacity }}
@@ -244,6 +251,25 @@ export function HeroParallax() {
             </div>
           </div>
           <p className="text-[8px] uppercase tracking-[0.2em] text-white/35 sm:text-[9px]">
+            ZEVANA / 01 — 05
+          </p>
+        </motion.div>
+
+        {/* White-stage footer copy */}
+        <motion.div
+          className="pointer-events-none absolute bottom-6 left-5 right-5 z-50 flex items-end justify-between text-black sm:bottom-8 sm:left-8 sm:right-8 lg:left-12 lg:right-12"
+          style={{ opacity: whiteTextOpacity }}
+          aria-hidden="true"
+        >
+          <div>
+            <p className="text-[8px] uppercase tracking-[0.22em] text-black/40 sm:text-[9px]">
+              Scroll to explore
+            </p>
+            <div className="mt-2 h-px w-24 overflow-hidden bg-black/15 sm:w-32">
+              <motion.div style={{ scaleX: smooth }} className="h-full origin-left bg-black" />
+            </div>
+          </div>
+          <p className="text-[8px] uppercase tracking-[0.2em] text-black/35 sm:text-[9px]">
             ZEVANA / 01 — 05
           </p>
         </motion.div>
