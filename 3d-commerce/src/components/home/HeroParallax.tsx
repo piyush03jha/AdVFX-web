@@ -11,6 +11,49 @@ const CARD_HEIGHT = "clamp(150px, 31.9vw, 500px)";
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
+function ProductCard({
+  product,
+  progress,
+}: {
+  product: (typeof heroProducts)[number];
+  progress: ReturnType<typeof useMotionValue<number>>;
+}) {
+  // The card rises from below only after the white editorial stage is visible.
+  // Its viewport is intentionally shallow: the lower price/rating area remains
+  // below the fold so only the upper half of the product card is exposed.
+  const reveal = useTransform(progress, [0.82, 0.92], [0, 1]);
+  const y = useTransform(reveal, [0, 1], ["130px", "0px"]);
+  const opacity = useTransform(reveal, [0, 0.25, 1], [0, 0.65, 1]);
+
+  return (
+    <motion.div
+      aria-hidden="true"
+      className="absolute left-0 top-[calc(100%+12px)] w-full overflow-hidden rounded-t-[12px] border border-black/10 bg-white text-black shadow-[0_-10px_30px_rgba(0,0,0,0.08)] sm:rounded-t-[16px]"
+      style={{
+        y,
+        opacity,
+        height: "clamp(58px, 6.5vw, 82px)",
+      }}
+    >
+      <div className="min-h-[150px] px-2.5 py-2.5 sm:px-3.5 sm:py-3">
+        <p className="truncate text-[8px] font-medium uppercase tracking-[0.08em] sm:text-[9px]">
+          {product.name}
+        </p>
+        <p className="mt-1 truncate text-[7px] uppercase tracking-[0.14em] text-black/40 sm:text-[8px]">
+          {product.category}
+        </p>
+
+        {/* Intentionally below the visible slice. Price/rating are not shown
+            during this hero stage; the full product card comes later. */}
+        <div className="mt-7 border-t border-black/10 pt-3 text-[7px] uppercase tracking-[0.1em] text-black/55 sm:text-[8px]">
+          <span>₹{product.price.toLocaleString("en-IN")}</span>
+          <span className="ml-4">Premium model</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function HeroCard({
   product,
   progress,
@@ -28,24 +71,32 @@ function HeroCard({
 
   const start = isOuter ? 0.30 : 0.045;
   const end = isOuter ? 0.58 : 0.25;
-
   const sideWidth = "clamp(70px, 15vw, 270px)";
   const finalX = isOuter ? 35 : 18;
   const finalY = isOuter ? -5 : -40;
 
   const reveal = useTransform(progress, [start, end], [0, 1]);
-  const xValue = useTransform(
+  const baseXValue = useTransform(
     reveal,
     [0, 0.55, 1],
     [0, direction * 2, direction * finalX],
   );
-  const yValue = useTransform(
+  const baseYValue = useTransform(
     reveal,
     [0, 0.55, 1],
     [0, isOuter ? 0 : -5, finalY],
   );
+
+  // After the white stage settles, the model and its card move together to
+  // the next carousel slot. This makes center -> left and right -> center.
+  const carouselShift = useTransform(progress, [0.90, 1], [0, -17]);
+  const xValue = useTransform(
+    [baseXValue, carouselShift],
+    ([baseX, shift]) => (baseX as number) + (shift as number),
+  );
+
   const x = useTransform(xValue, (value) => `${value}vw`);
-  const y = useTransform(yValue, (value) => `${value}px`);
+  const y = useTransform(baseYValue, (value) => `${value}px`);
   const scale = useTransform(reveal, [0, 0.35, 1], [0.78, 0.9, 1]);
   const opacity = useTransform(reveal, [0, 0.1, 0.45, 1], [0, 0.5, 0.9, 1]);
 
@@ -82,7 +133,7 @@ function HeroCard({
       />
 
       <motion.div
-        className="absolute inset-0 overflow-hidden rounded-[16px] sm:rounded-[22px]"
+        className="absolute inset-0 overflow-visible rounded-[16px] sm:rounded-[22px]"
         style={{ padding: imageInset }}
       >
         <div className="h-full w-full overflow-hidden rounded-[12px] sm:rounded-[17px]">
@@ -94,6 +145,7 @@ function HeroCard({
             className="h-full w-full object-contain"
           />
         </div>
+        <ProductCard product={product} progress={progress} />
       </motion.div>
     </motion.article>
   );
@@ -111,13 +163,17 @@ function CenterCard({
   const chromeOpacity = useTransform(progress, [0.62, 0.76, 0.88], [1, 0.35, 0]);
   const imageInset = useTransform(progress, [0.62, 0.88], ["8px", "0px"]);
 
+  // The active center model moves to the left on the next scroll step.
+  const carouselShift = useTransform(progress, [0.90, 1], [0, -18]);
+  const centerX = useTransform(carouselShift, (value) => `${value}vw`);
+
   return (
     <motion.div
       initial={{ y: "115vh", opacity: 0, scale: 0.9 }}
       animate={{ y: 0, opacity: 1, scale: 1 }}
       transition={{ duration: 1.45, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
       className="absolute left-1/2 top-1/2 z-20 w-[clamp(92px,24vw,360px)] -translate-x-1/2 -translate-y-1/2"
-      style={{ height: CARD_HEIGHT }}
+      style={{ height: CARD_HEIGHT, x: centerX }}
     >
       <motion.div style={{ y: scrollY, scale }} className="relative h-full w-full">
         <motion.div
@@ -127,7 +183,7 @@ function CenterCard({
         />
 
         <motion.div
-          className="absolute inset-0 overflow-hidden rounded-[20px] sm:rounded-[28px]"
+          className="absolute inset-0 overflow-visible rounded-[20px] sm:rounded-[28px]"
           style={{ padding: imageInset }}
         >
           <div className="relative h-full w-full overflow-hidden rounded-[15px] sm:rounded-[22px]">
@@ -140,6 +196,7 @@ function CenterCard({
               className="h-full w-full object-contain"
             />
           </div>
+          <ProductCard product={product} progress={progress} />
         </motion.div>
       </motion.div>
     </motion.div>
@@ -209,10 +266,7 @@ export function HeroParallax() {
         <motion.div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-full bg-white"
-          style={{
-            y: whiteStageY,
-            opacity: whiteStageOpacity,
-          }}
+          style={{ y: whiteStageY, opacity: whiteStageOpacity }}
         />
 
         <div className="absolute inset-x-0 top-0 z-40 flex items-start justify-between px-5 pt-6 sm:px-8 sm:pt-8 lg:px-12 lg:pt-10">
@@ -231,7 +285,6 @@ export function HeroParallax() {
         <HeroCard product={rightOuter} progress={smooth} side="right" depth="outer" />
         <HeroCard product={leftInner} progress={smooth} side="left" depth="inner" />
         <HeroCard product={rightInner} progress={smooth} side="right" depth="inner" />
-
         <CenterCard product={heroProducts[0]} progress={smooth} />
 
         <div className="absolute bottom-6 left-5 right-5 z-40 flex items-end justify-between sm:bottom-8 sm:left-8 sm:right-8 lg:left-12 lg:right-12">
