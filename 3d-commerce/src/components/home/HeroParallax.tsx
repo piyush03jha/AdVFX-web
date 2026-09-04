@@ -25,21 +25,27 @@ function HeroCard({
   const isOuter = depth === "outer";
   const direction = isLeft ? -1 : 1;
 
-  // Side cards are intentionally smaller than the center card so all four
-  // surrounding cards can sit comfortably inside the viewport.
   const start = isOuter ? 0.30 : 0.045;
   const end = isOuter ? 0.58 : 0.25;
-  const finalX = isOuter ? 40 : 20;
+
+  // Keep the side-card HEIGHT identical to the center card.
+  // Only the WIDTH is reduced so all four cards fit in the viewport.
+  const sideWidth = "clamp(58px, 15vw, 230px)";
+  const cardHeight = "clamp(123px, 31.9vw, 480px)";
+
+  // Tight composition: inner cards overlap the center slightly and the
+  // outer cards stay close behind them instead of leaving large gaps.
+  const finalX = isOuter ? 29 : 17;
   const finalY = isOuter ? 8 : -15;
 
   const reveal = useTransform(progress, [start, end], [0, 1]);
-  const x = useTransform(reveal, [0, 0.55, 1], [0, direction * 4, direction * finalX]);
-  const y = useTransform(reveal, [0, 0.55, 1], [0, isOuter ? 0 : -6, finalY]);
+  const x = useTransform(reveal, [0, 0.55, 1], [0, direction * 2, direction * finalX]);
+  const y = useTransform(reveal, [0, 0.55, 1], [0, isOuter ? 0 : -5, finalY]);
   const scale = useTransform(reveal, [0, 0.35, 1], [0.78, 0.9, 1]);
   const opacity = useTransform(reveal, [0, 0.1, 0.45, 1], [0, 0.5, 0.9, 1]);
 
-  // Y-axis perspective tilt: the vertical edges stay parallel. Each card
-  // turns inward in depth toward the center instead of rotating diagonally.
+  // Y-axis perspective tilt: vertical edges remain parallel and the cards
+  // face inward toward the center without a diagonal 2D rotation.
   const rotateY = useTransform(
     reveal,
     [0, 0.35, 1],
@@ -51,6 +57,8 @@ function HeroCard({
       style={{
         x: useTransform(x, (value) => `${value}vw`),
         y: useTransform(y, (value) => `${value}px`),
+        width: sideWidth,
+        height: cardHeight,
         scale,
         opacity,
         rotateY,
@@ -59,9 +67,9 @@ function HeroCard({
         transformStyle: "preserve-3d",
         transformOrigin: "50% 50%",
       }}
-      className="pointer-events-none absolute left-1/2 top-1/2 w-[clamp(58px,15vw,230px)] -translate-x-1/2 -translate-y-1/2"
+      className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
     >
-      <div className="aspect-[3/4] w-full overflow-hidden rounded-[16px] bg-white p-1.5 shadow-[0_25px_70px_rgba(0,0,0,0.34)] sm:rounded-[22px] sm:p-2">
+      <div className="h-full w-full overflow-hidden rounded-[16px] bg-white p-1.5 shadow-[0_25px_70px_rgba(0,0,0,0.34)] sm:rounded-[22px] sm:p-2">
         <div className="h-full w-full overflow-hidden rounded-[12px] bg-white sm:rounded-[17px]">
           <img
             src={product.image ?? product.model}
