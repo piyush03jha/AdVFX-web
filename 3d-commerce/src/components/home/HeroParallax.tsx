@@ -31,7 +31,7 @@ function HeroCard({
   const x = useTransform(reveal, [0, 1], [direction * 18, direction * position]);
   const y = useTransform(reveal, [0, 1], [stage === 1 ? 28 : 36, stage === 1 ? 0 : 8]);
   const scale = useTransform(reveal, [0, 1], [0.72, stage === 1 ? 0.82 : 0.68]);
-  const opacity = useTransform(reveal, [0, 0.18, 1], [0, 0.7, 1]);
+  const opacity = useTransform(reveal, [0, 0.18, 1], [0, 0.72, 1]);
   const rotation = useTransform(reveal, [0, 1], [direction * 12, rotate]);
 
   return (
@@ -44,14 +44,14 @@ function HeroCard({
         rotate: rotation,
       }}
       className={
-        `pointer-events-none absolute left-1/2 top-1/2 z-10 origin-center ` +
+        `pointer-events-none absolute left-1/2 top-1/2 origin-center ` +
         `-translate-x-1/2 -translate-y-1/2 ` +
         (stage === 1
           ? "w-[22vw] min-w-[112px] max-w-[190px]"
           : "w-[18vw] min-w-[96px] max-w-[160px]")
       }
     >
-      <div className="overflow-hidden rounded-[18px] bg-white p-[5px] shadow-[0_24px_70px_rgba(0,0,0,0.22)] sm:rounded-[22px] sm:p-[7px]">
+      <div className="overflow-hidden rounded-[18px] bg-white p-[5px] shadow-[0_24px_70px_rgba(0,0,0,0.24)] sm:rounded-[22px] sm:p-[7px]">
         <div className="aspect-[3/4] overflow-hidden rounded-[14px] bg-white sm:rounded-[17px]">
           <img
             src={product.image ?? product.model}
@@ -78,21 +78,28 @@ function CenterCard({
 
   return (
     <motion.div
-      style={{ y: scrollY, scale }}
+      initial={{ y: "115vh", opacity: 0, scale: 0.9 }}
+      animate={{ y: 0, opacity: 1, scale: 1 }}
+      transition={{ duration: 1.35, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
       className="absolute left-1/2 top-1/2 z-20 h-[66svh] w-[min(38vw,360px)] min-w-[220px] max-w-[390px] -translate-x-1/2 -translate-y-1/2"
     >
-      <div className="h-full w-full overflow-hidden rounded-[24px] bg-white p-2 shadow-[0_35px_100px_rgba(0,0,0,0.32)] sm:rounded-[30px] sm:p-3">
-        <div className="relative h-full w-full overflow-hidden rounded-[19px] bg-white sm:rounded-[24px]">
-          <img
-            src={product.image ?? product.model}
-            alt={product.name}
-            loading="eager"
-            decoding="async"
-            fetchPriority="high"
-            className="h-full w-full object-cover"
-          />
+      <motion.div
+        style={{ y: scrollY, scale }}
+        className="h-full w-full"
+      >
+        <div className="h-full w-full overflow-hidden rounded-[24px] bg-white p-2 shadow-[0_35px_100px_rgba(0,0,0,0.34)] sm:rounded-[30px] sm:p-3">
+          <div className="relative h-full w-full overflow-hidden rounded-[19px] bg-white sm:rounded-[24px]">
+            <img
+              src={product.image ?? product.model}
+              alt={product.name}
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+              className="h-full w-full object-cover"
+            />
+          </div>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
@@ -139,8 +146,8 @@ export function HeroParallax() {
     };
   }, [progress]);
 
-  const firstPairOpacity = clamp((rawProgress - 0.04) / 0.16, 0, 1);
-  const secondPairOpacity = clamp((rawProgress - 0.34) / 0.18, 0, 1);
+  const firstPairOpacity = clamp((rawProgress - 0.035) / 0.13, 0, 1);
+  const secondPairOpacity = clamp((rawProgress - 0.34) / 0.16, 0, 1);
 
   const leftFirst = heroProducts[1];
   const rightFirst = heroProducts[2];
@@ -188,13 +195,6 @@ export function HeroParallax() {
           <HeroCard product={leftSecond} progress={smooth} side="left" stage={2} />
           <HeroCard product={rightSecond} progress={smooth} side="right" stage={2} />
         </div>
-
-        <motion.div
-          initial={{ y: "115vh", opacity: 0, scale: 0.9 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          transition={{ duration: 1.35, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-          className="pointer-events-none absolute inset-0 z-[22]"
-        />
 
         <div className="absolute bottom-6 left-5 right-5 z-40 flex items-end justify-between sm:bottom-8 sm:left-8 sm:right-8 lg:left-12 lg:right-12">
           <div>
