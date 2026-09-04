@@ -3,17 +3,22 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Post,
   StreamableFile,
-  NotFoundException,
-  Res,
+  UseGuards,
 } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
+<<<<<<< HEAD
 
+=======
+import { AdminGuard } from "../auth/guards/admin.guard";
+>>>>>>> origin/feat/backend-catalog-admin-foundation
 import { ProductFilesService } from "./product-files.service";
 import { StorageService } from "../storage/storage.service";
 
+@UseGuards(AdminGuard)
 @Controller("products/:productId/files")
 export class ProductFilesController {
   constructor(
@@ -31,17 +36,13 @@ export class ProductFilesController {
     };
 
     if (typeof request.file !== "function") {
-      throw new BadRequestException(
-        "Multipart upload support is not available",
-      );
+      throw new BadRequestException("Multipart upload support is not available");
     }
 
     const uploadedFile = await request.file();
+    if (!uploadedFile) throw new BadRequestException("File is required");
 
-    if (!uploadedFile) {
-      throw new BadRequestException("File is required");
-    }
-
+<<<<<<< HEAD
     const multipartFile = uploadedFile as {
       filename?: string;
       mimetype?: string;
@@ -83,11 +84,26 @@ export class ProductFilesController {
   async findAll(
     @Param("productId") productId: string,
   ) {
+=======
+    const buffer = await uploadedFile.toBuffer();
+    const file = {
+      originalname: uploadedFile.filename,
+      mimetype: uploadedFile.mimetype,
+      size: buffer.length,
+      buffer,
+    };
+
+    return reply.send(await this.productFilesService.upload(productId, file));
+  }
+
+  @Get()
+  findAll(@Param("productId") productId: string) {
+>>>>>>> origin/feat/backend-catalog-admin-foundation
     return this.productFilesService.findAll(productId);
   }
 
   @Get(":fileId")
-  async findOne(
+  findOne(
     @Param("productId") productId: string,
     @Param("fileId") fileId: string,
   ) {
@@ -98,15 +114,25 @@ export class ProductFilesController {
   }
 
   @Get(":fileId/download")
-  async download(
+  async preview(
     @Param("productId") productId: string,
     @Param("fileId") fileId: string,
   ) {
+<<<<<<< HEAD
     const file =
       await this.productFilesService.findOne(
         productId,
         fileId,
       );
+=======
+    const file = await this.productFilesService.findOne(productId, fileId);
+    const path = this.storage.getAbsolutePath(file.storageKey);
+
+    try {
+      const { createReadStream } = await import("fs");
+      const stream = createReadStream(path);
+      const safeName = file.originalName.replace(/[\\/\r\n\"']/g, "_");
+>>>>>>> origin/feat/backend-catalog-admin-foundation
 
     const absolutePath =
       this.storage.getAbsolutePath(
@@ -126,6 +152,7 @@ export class ProductFilesController {
       });
 
       return new StreamableFile(stream, {
+<<<<<<< HEAD
         type:
           file.mimeType ??
           "application/octet-stream",
@@ -133,22 +160,21 @@ export class ProductFilesController {
           `attachment; filename="${encodeURIComponent(
             file.originalName,
           )}"`,
+=======
+        type: file.mimeType ?? "application/octet-stream",
+        disposition: `inline; filename="${encodeURIComponent(safeName)}"`,
+>>>>>>> origin/feat/backend-catalog-admin-foundation
       });
     } catch {
-      throw new NotFoundException(
-        "Stored file could not be found",
-      );
+      throw new NotFoundException("Stored file could not be found");
     }
   }
 
   @Delete(":fileId")
-  async delete(
+  delete(
     @Param("productId") productId: string,
     @Param("fileId") fileId: string,
   ) {
-    return this.productFilesService.delete(
-      productId,
-      fileId,
-    );
+    return this.productFilesService.delete(productId, fileId);
   }
 }

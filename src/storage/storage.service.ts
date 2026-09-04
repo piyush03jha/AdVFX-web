@@ -31,6 +31,7 @@ export class StorageService {
   );
 
   async saveProductFile(
+<<<<<<< HEAD
     options: SaveProductFileOptions,
   ): Promise<StoredFile> {
     const productId = options.productId.trim();
@@ -54,6 +55,63 @@ export class StorageService {
       );
     }
 
+=======
+    productId: string,
+    originalName: string,
+    buffer: Buffer,
+  ): Promise<{
+    storageKey: string;
+    storageUrl: string;
+  }> {
+    return this.saveScopedFile(
+      ["products", productId],
+      originalName,
+      buffer,
+    );
+  }
+
+  async saveCustomRequestFile(
+    requestId: string,
+    originalName: string,
+    buffer: Buffer,
+  ): Promise<{
+    storageKey: string;
+    storageUrl: string;
+  }> {
+    return this.saveScopedFile(
+      ["custom-requests", requestId],
+      originalName,
+      buffer,
+    );
+  }
+
+  async delete(storageKey: string): Promise<void> {
+    const absolutePath = join(this.root, storageKey);
+
+    try {
+      await unlink(absolutePath);
+    } catch (error: any) {
+      if (error?.code !== "ENOENT") {
+        throw new InternalServerErrorException(
+          "Unable to delete stored file",
+        );
+      }
+    }
+  }
+
+  getAbsolutePath(storageKey: string): string {
+    return join(this.root, storageKey);
+  }
+
+  private async saveScopedFile(
+    segments: string[],
+    originalName: string,
+    buffer: Buffer,
+  ): Promise<{
+    storageKey: string;
+    storageUrl: string;
+  }> {
+>>>>>>> origin/feat/backend-catalog-admin-foundation
     const extension = extname(originalName).toLowerCase();
 
     if (!extension) {
@@ -62,6 +120,12 @@ export class StorageService {
       );
     }
 
+<<<<<<< HEAD
+=======
+    const directory = join(this.root, ...segments);
+    await mkdir(directory, { recursive: true });
+
+>>>>>>> origin/feat/backend-catalog-admin-foundation
     const safeBaseName = basename(
       originalName,
       extension,
@@ -75,6 +139,7 @@ export class StorageService {
     const filename =
       `${randomUUID()}-${safeBaseName || "file"}${extension}`;
 
+<<<<<<< HEAD
     const productDirectory = join(
       this.root,
       "products",
@@ -95,21 +160,32 @@ export class StorageService {
         absolutePath,
         options.buffer,
       );
+=======
+    const absolutePath = join(directory, filename);
+
+    try {
+      await writeFile(absolutePath, buffer);
+>>>>>>> origin/feat/backend-catalog-admin-foundation
     } catch {
       throw new InternalServerErrorException(
         "Unable to store uploaded file",
       );
     }
 
+<<<<<<< HEAD
     const storageKey = [
       "products",
       productId,
       filename,
     ].join("/");
+=======
+    const storageKey = [...segments, filename].join("/");
+>>>>>>> origin/feat/backend-catalog-admin-foundation
 
     return {
       storageKey,
       storageUrl: `/storage/${storageKey}`,
+<<<<<<< HEAD
       storagePath: absolutePath,
       size: options.buffer.length,
     };
@@ -160,4 +236,8 @@ export class StorageService {
 
     return absolutePath;
   }
+=======
+    };
+  }
+>>>>>>> origin/feat/backend-catalog-admin-foundation
 }
