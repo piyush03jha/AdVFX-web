@@ -29,12 +29,7 @@ function HeroCard({
   const start = isOuter ? 0.30 : 0.045;
   const end = isOuter ? 0.58 : 0.25;
 
-  // Side cards use the same HEIGHT as the center card.
-  // Their WIDTH is intentionally smaller to create the fan composition.
   const sideWidth = "clamp(70px, 15vw, 270px)";
-
-  // Equal visual gaps: outer cards sit one side-card width + the same gap
-  // beyond the inner cards, producing 5 — 4 — CENTER — 2 — 3.
   const finalX = isOuter ? 35 : 18;
   const finalY = isOuter ? -5 : -40;
 
@@ -54,8 +49,9 @@ function HeroCard({
   const scale = useTransform(reveal, [0, 0.35, 1], [0.78, 0.9, 1]);
   const opacity = useTransform(reveal, [0, 0.1, 0.45, 1], [0, 0.5, 0.9, 1]);
 
-  // Y-axis perspective tilt: vertical edges remain parallel and each card
-  // faces inward toward the center without a diagonal 2D rotation.
+  const chromeOpacity = useTransform(progress, [0.62, 0.76, 0.88], [1, 0.35, 0]);
+  const imageInset = useTransform(progress, [0.62, 0.88], ["6px", "0px"]);
+
   const rotateY = useTransform(
     reveal,
     [0, 0.35, 1],
@@ -79,8 +75,17 @@ function HeroCard({
       }}
       className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
     >
-      <div className="h-full w-full overflow-hidden rounded-[16px] bg-white p-1.5 shadow-[0_25px_70px_rgba(0,0,0,0.34)] sm:rounded-[22px] sm:p-2">
-        <div className="h-full w-full overflow-hidden rounded-[12px] bg-white sm:rounded-[17px]">
+      <motion.div
+        aria-hidden="true"
+        className="absolute inset-0 overflow-hidden rounded-[16px] bg-white shadow-[0_25px_70px_rgba(0,0,0,0.34)] sm:rounded-[22px]"
+        style={{ opacity: chromeOpacity }}
+      />
+
+      <motion.div
+        className="absolute inset-0 overflow-hidden rounded-[16px] sm:rounded-[22px]"
+        style={{ padding: imageInset }}
+      >
+        <div className="h-full w-full overflow-hidden rounded-[12px] sm:rounded-[17px]">
           <img
             src={product.image ?? product.model}
             alt={product.name}
@@ -89,7 +94,7 @@ function HeroCard({
             className="h-full w-full object-contain"
           />
         </div>
-      </div>
+      </motion.div>
     </motion.article>
   );
 }
@@ -103,6 +108,8 @@ function CenterCard({
 }) {
   const scrollY = useTransform(progress, [0, 0.3, 0.65, 1], [0, -10, -18, -30]);
   const scale = useTransform(progress, [0, 0.25, 0.65, 1], [1, 1, 0.98, 0.94]);
+  const chromeOpacity = useTransform(progress, [0.62, 0.76, 0.88], [1, 0.35, 0]);
+  const imageInset = useTransform(progress, [0.62, 0.88], ["8px", "0px"]);
 
   return (
     <motion.div
@@ -112,9 +119,18 @@ function CenterCard({
       className="absolute left-1/2 top-1/2 z-20 w-[clamp(92px,24vw,360px)] -translate-x-1/2 -translate-y-1/2"
       style={{ height: CARD_HEIGHT }}
     >
-      <motion.div style={{ y: scrollY, scale }} className="h-full w-full">
-        <div className="h-full w-full overflow-hidden rounded-[20px] bg-white p-2 shadow-[0_35px_100px_rgba(0,0,0,0.4)] sm:rounded-[28px] sm:p-3">
-          <div className="relative h-full w-full overflow-hidden rounded-[15px] bg-white sm:rounded-[22px]">
+      <motion.div style={{ y: scrollY, scale }} className="relative h-full w-full">
+        <motion.div
+          aria-hidden="true"
+          className="absolute inset-0 overflow-hidden rounded-[20px] bg-white shadow-[0_35px_100px_rgba(0,0,0,0.4)] sm:rounded-[28px]"
+          style={{ opacity: chromeOpacity }}
+        />
+
+        <motion.div
+          className="absolute inset-0 overflow-hidden rounded-[20px] sm:rounded-[28px]"
+          style={{ padding: imageInset }}
+        >
+          <div className="relative h-full w-full overflow-hidden rounded-[15px] sm:rounded-[22px]">
             <img
               src={product.image ?? product.model}
               alt={product.name}
@@ -124,7 +140,7 @@ function CenterCard({
               className="h-full w-full object-contain"
             />
           </div>
-        </div>
+        </motion.div>
       </motion.div>
     </motion.div>
   );
@@ -168,8 +184,6 @@ export function HeroParallax() {
     };
   }, [progress]);
 
-  // The white stage enters only after the five-card composition is established.
-  // It rises from below the viewport instead of fading the black background.
   const whiteStageY = useTransform(
     smooth,
     [0.58, 0.72, 0.86],
@@ -177,7 +191,6 @@ export function HeroParallax() {
   );
   const whiteStageOpacity = useTransform(smooth, [0.58, 0.64], [0, 1]);
 
-  // Spatial order: 5 — 4 — CENTER — 2 — 3.
   const leftInner = heroProducts[3];
   const rightInner = heroProducts[1];
   const leftOuter = heroProducts[2];
@@ -193,12 +206,6 @@ export function HeroParallax() {
       <div className="sticky top-0 h-[100svh] overflow-hidden bg-black">
         <div className="absolute inset-0 bg-black" />
 
-        {/*
-          Editorial white stage.
-          It starts completely below the viewport and physically rises upward
-          as the user scrolls after the five-card reveal is complete.
-          Cards stay above it through their higher z-index values.
-        */}
         <motion.div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-full bg-white"
